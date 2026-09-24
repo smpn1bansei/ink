@@ -96,31 +96,31 @@
         </div>
 
         <!-- Layar Permainan (Game Screen) -->
-        <div id="game-screen" class="hidden flex-1 flex flex-col w-full h-full">
+        <div id="game-screen" class="hidden flex-1 flex flex-col w-full h-full relative">
             
-            <!-- Bagian Atas: Soal -->
-            <div class="glass-panel w-full py-8 px-4 text-center shadow-lg relative">
-                <h2 id="question-text" class="text-4xl md:text-6xl font-black text-white drop-shadow-md">
-                    Memuat pertanyaan...
-                </h2>
-                
-                <!-- Timer di tengah bawah kotak soal -->
-                <div class="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black text-5xl font-black w-24 h-24 rounded-full flex items-center justify-center shadow-2xl border-4 border-gray-200">
-                    <span id="timer-text">30</span>
-                </div>
+            <div class="absolute top-6 left-6 z-[60] bg-black/60 backdrop-blur-md border border-white/20 text-white px-6 py-2 rounded-2xl shadow-xl">
+                <span class="text-xl font-bold uppercase tracking-widest text-gray-300">Soal</span>
+                <span id="question-counter" class="text-3xl font-black ml-2 text-blue-400">1/5</span>
             </div>
 
-            <!-- Bagian Bawah: Opsi Jawaban (Terbagi Kiri dan Kanan) -->
-            <div class="flex-1 flex flex-row w-full mt-12">
-                <!-- Sisi Kiri (Opsi A) -->
-                <div id="pane-A" class="split-pane flex-1 border-r border-dashed border-white/30 relative flex flex-col">
-                    <div class="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-xl text-2xl font-bold shadow-md">Opsi A</div>
-                    <div class="flex-1 flex items-center justify-center p-8">
-                        <span id="text-A" class="text-5xl md:text-7xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">Jawaban A</span>
-                    </div>
-                </div>
+            <div class="absolute top-6 right-6 z-[60] flex space-x-3">
+                <button onclick="togglePause()" id="btn-pause" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Jeda/Lanjut (Pause)">
+                    ⏸️
+                </button>
+                <button onclick="fastForward()" id="btn-ff" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Percepat (Skip Waktu)">
+                    ⏩
+                </button>
+                <button onclick="toggleFullscreen()" id="btn-fs" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Layar Penuh (Fullscreen)">
+                    ⛶
+                </button>
+            </div>
 
-                <!-- Sisi Kanan (Opsi B) -->
+            <div id="correct-answer-announcement" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[70] bg-black/90 backdrop-blur-lg px-12 py-8 rounded-3xl border-4 border-green-400 shadow-[0_0_50px_rgba(74,222,128,0.6)] text-center transition-opacity duration-300">
+                <h3 class="text-6xl font-black text-white tracking-wide mb-2">Jawaban <span id="correct-letter" class="text-green-400">A</span> Benar!</h3>
+            </div>
+
+            <!-- Bagian Atas: Soal -->
+            <div class="glass-panel w-full py-8 px-4 text-center shadow-lg relative pt-24">
                 <div id="pane-B" class="split-pane flex-1 relative flex flex-col">
                     <div class="absolute top-4 right-4 bg-purple-600 text-white px-4 py-2 rounded-xl text-2xl font-bold shadow-md">Opsi B</div>
                     <div class="flex-1 flex items-center justify-center p-8">
@@ -182,6 +182,7 @@
         let soalSaatIniIndex = 0;
         let sisaWaktu = WAKTU_PER_SOAL;
         let timerInterval;
+        let isPaused = false; // Variabel baru untuk fitur Jeda (Pause)
 
         // --- FUNGSI KAMERA & MULAI ---
         async function requestCameraAndStart() {
@@ -209,6 +210,11 @@
             document.getElementById('pane-A').classList.remove('bg-correct', 'bg-incorrect');
             document.getElementById('pane-B').classList.remove('bg-correct', 'bg-incorrect');
             
+            isPaused = false;
+            document.getElementById('btn-pause').innerText = "⏸️"; // Kembalikan ikon pause
+            document.getElementById('question-counter').innerText = `${index + 1}/${daftarSoal.length}`;
+            document.getElementById('correct-answer-announcement').classList.add('hidden'); // Sembunyikan popup jawaban
+
             const soal = daftarSoal[index];
             
             // Tampilkan teks ke layar
@@ -225,6 +231,8 @@
         }
 
         function updateTimer() {
+            if (isPaused) return; 
+
             sisaWaktu--;
             document.getElementById('timer-text').innerText = sisaWaktu;
             
@@ -258,6 +266,9 @@
                 paneB.classList.add('bg-correct');
             }
 
+            document.getElementById('correct-letter').innerText = soal.jawabanBenar;
+            document.getElementById('correct-answer-announcement').classList.remove('hidden');
+
             // Tahan layar warna selama 5 detik agar siswa bisa melihat hasilnya
             setTimeout(() => {
                 soalSaatIniIndex++;
@@ -279,6 +290,36 @@
             document.getElementById('end-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             mulaiRonde(soalSaatIniIndex);
+        }
+
+        // --- FUNGSI KONTROL TAMBAHAN ---
+        function togglePause() {
+            if (sisaWaktu > 0 && document.getElementById('timer-text').parentElement.classList.contains('hidden') === false) {
+                isPaused = !isPaused;
+                document.getElementById('btn-pause').innerText = isPaused ? "▶️" : "⏸️";
+            }
+        }
+
+        function fastForward() {
+            // Hanya berlaku jika waktu belum habis
+            if (sisaWaktu > 0 && document.getElementById('timer-text').parentElement.classList.contains('hidden') === false) {
+                sisaWaktu = 1; // Ubah waktu jadi 1 detik agar di interval berikutnya langsung selesai
+                if (isPaused) {
+                    togglePause(); // Pastikan tidak dalam status pause agar interval tetap berjalan
+                }
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.warn(`Gagal masuk ke mode Fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
         }
 
         // --- FUNGSI ERROR HANDLING ---
