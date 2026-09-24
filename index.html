@@ -41,11 +41,9 @@
             flex-direction: column;
         }
 
-        /* Efek kaca (Glassmorphism) untuk kotak soal */
+        /* Kotak soal dengan latar belakang sedikit gelap tanpa blur */
         .glass-panel {
             background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
         }
 
@@ -80,8 +78,8 @@
             <p class="text-xl md:text-2xl mb-12 text-gray-300 max-w-2xl text-center">
                 Berdirilah di sisi layar yang memiliki jawaban benar. Pastikan seluruh siswa sudah siap!
             </p>
-            <button onclick="requestCameraAndStart()" class="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-3xl font-bold shadow-lg shadow-blue-500/50 transition transform hover:scale-105">
-                Mulai Permainan
+            <button onclick="requestCameraAndStart()" class="px-12 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-4xl font-bold shadow-lg shadow-blue-500/50 transition transform hover:scale-105">
+                Mulai
             </button>
         </div>
 
@@ -120,13 +118,12 @@
             </div>
 
             <!-- Bagian Atas: Soal & Timer -->
-            <div class="glass-panel w-full py-8 px-4 text-center shadow-lg relative pt-24 z-[55]">
-                <h2 id="question-text" class="text-4xl md:text-5xl lg:text-6xl font-black mb-6 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-white px-10 leading-snug">
+            <div class="glass-panel w-full py-6 px-4 text-center shadow-lg relative pt-20 z-[55]">
+                <h2 id="question-text" class="text-3xl md:text-4xl lg:text-5xl font-black mb-4 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-white px-10 leading-snug">
                     Pertanyaan akan muncul di sini
                 </h2>
-                <div class="inline-block bg-black/80 border border-white/20 px-8 py-3 rounded-full shadow-xl">
-                    <span class="text-2xl text-gray-300 font-bold uppercase tracking-widest mr-3">Waktu:</span>
-                    <span id="timer-text" class="text-5xl font-black text-white drop-shadow-md">30</span>
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-black/60 border-2 border-white/30 rounded-full shadow-xl">
+                    <span id="timer-text" class="text-4xl font-black text-white drop-shadow-md">30</span>
                 </div>
             </div>
 
