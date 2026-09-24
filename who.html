@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Who Wants to Be a Millionaire</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --bg-dark: #0a0e27;
+    --bg-mid: #111640;
+    --blue-glow: #1e40af;
+    --gold: #f5c518;
+    --gold-dim: #b8960f;
+    --correct: #16a34a;
+    --wrong: #dc2626;
+    --option-bg: linear-gradient(135deg, #1a1f4e 0%, #0d1133 100%);
+    --option-border: #2d3a8c;
+    --option-hover: #252b6e;
+    --safe: #f59e0b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:var(--bg-dark); color:#fff; font-family:'Inter',sans-serif; }
+
+  /* ─── Background ─── */
+  .bg-scene {
+    position:fixed; inset:0; z-index:0;
+    background: radial-gradient(ellipse at 50% 20%, #1a2370 0%, #0a0e27 50%, #050720 100%);
+  }
+  .bg-scene::before {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(circle at 50% 80%, rgba(30,64,175,.25) 0%, transparent 60%);
+  }
+  .stars { position:absolute; inset:0; overflow:hidden; }
+  .stars span {
+    position:absolute; width:2px; height:2px; background:#fff; border-radius:50%;
+    animation: twinkle 3s infinite alternate;
+  }
+  @keyframes twinkle { 0%{opacity:.2} 100%{opacity:.8} }
+
+  /* ─── Screens ─── */
+  .screen { position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; transition: opacity .5s ease; }
+  .screen.hidden { opacity:0; pointer-events:none; }
+
+  /* ─── Start Screen ─── */
+  #start-screen .logo-diamond {
+    width:160px; height:160px; position:relative; margin-bottom:32px;
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+  .logo-diamond svg { width:100%; height:100%; filter: drop-shadow(0 0 40px rgba(245,197,24,.4)); }
+  #start-screen h1 {
+    font-family:'Oswald',sans-serif; font-size:clamp(2.5rem,6vw,4.5rem); font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; text-align:center;
+    background: linear-gradient(180deg, #fff 20%, var(--gold) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text; margin-bottom:12px;
+  }
+  #start-screen .subtitle { color:rgba(255,255,255,.6); font-size:1.15rem; margin-bottom:40px; }
+  .btn-start {
+    font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:600;
+    padding:16px 56px; border:2px solid var(--gold); border-radius:50px;
+    background: linear-gradient(135deg, rgba(245,197,24,.15) 0%, rgba(245,197,24,.05) 100%);
+    color:var(--gold); cursor:pointer; text-transform:uppercase; letter-spacing:.08em;
+    transition: all .3s ease; position:relative; overflow:hidden;
+  }
+  .btn-start:hover { background:rgba(245,197,24,.2); box-shadow:0 0 40px rgba(245,197,24,.25); transform:scale(1.04); }
+
+  /* ─── Game Screen ─── */
+  #game-screen { padding:20px; justify-content:flex-end; }
+
+  /* Money Tree */
+  .money-tree {
+    position:absolute; top:16px; right:20px; z-index:20;
+    background:rgba(10,14,39,.85); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.08); border-radius:16px;
+    padding:10px 6px; width:220px; max-height:calc(100vh - 32px); overflow-y:auto;
+  }
+  .money-tree.collapsed { width:auto; padding:10px 14px; }
+  .money-tree.collapsed .mt-row { display:none; }
+  .money-tree.collapsed .mt-toggle-label { display:block; }
+  .mt-toggle {
+    display:flex; align-items:center; justify-content:flex-end; padding:0 8px 6px;
+    cursor:pointer; color:rgba(255,255,255,.4); font-size:.75rem; user-select:none;
+  }
+  .mt-toggle-label { display:none; font-family:'Oswald',sans-serif; font-size:1.1rem; color:var(--gold); }
+  .mt-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:5px 12px; border-radius:8px; font-family:'Oswald',sans-serif;
+    font-size:.9rem; color:rgba(255,255,255,.35); transition: all .3s ease;
+  }
+  .mt-row .level { width:24px; text-align:center; }
+  .mt-row .amount { letter-spacing:.02em; }
+  .mt-row.current { color:#fff; background:rgba(245,197,24,.15); box-shadow:0 0 12px rgba(245,197,24,.2); }
+  .mt-row.safe { color:var(--safe); font-weight:600; }
+  .mt-row.passed { color:rgba(255,255,255,.2); }
+  .mt-row.won { color:var(--correct); }
+
+  /* Question area */
+  .question-area { width:100%; max-width:900px; margin:0 auto; padding-bottom:24px; z-index:15; }
+  .q-header {
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;
+  }
+  .q-number {
+    font-family:'Oswald',sans-serif; font-size:1rem; color:rgba(255,255,255,.5);
+    background:rgba(255,255,255,.06); padding:6px 16px; border-radius:20px;
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .q-prize {
+    font-family:'Oswald',sans-serif; font-size:1.15rem; color:var(--gold); font-weight:600;
+    background:rgba(245,197,24,.08); padding:6px 18px; border-radius:20px;
+    border:1px solid rgba(245,197,24,.2);
+  }
+
+  /* Timer */
+  .timer-wrap {
+    position:relative; width:68px; height:68px; margin:0 auto 16px;
+  }
+  .timer-wrap svg { width:100%; height:100%; transform:rotate(-90deg); }
+  .timer-wrap .track { fill:none; stroke:rgba(255,255,255,.08); stroke-width:5; }
+  .timer-wrap .progress { fill:none; stroke:var(--gold); stroke-width:5; stroke-linecap:round; transition: stroke-dashoffset 1s linear, stroke .3s; }
+  .timer-wrap .progress.urgent { stroke:var(--wrong); }
+  .timer-text {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:1.4rem; font-weight:600;
+  }
+
+  /* Question card */
+  .q-card {
+    background: linear-gradient(135deg, rgba(17,22,64,.9) 0%, rgba(10,14,39,.95) 100%);
+    backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.08);
+    border-radius:20px; padding:28px 32px; text-align:center; margin-bottom:24px;
+    min-height:100px; display:flex; align-items:center; justify-content:center;
+  }
+  .q-card h2 {
+    font-family:'Oswald',sans-serif; font-size:clamp(1.25rem,3vw,1.8rem); font-weight:500;
+    line-height:1.4; letter-spacing:.01em;
+  }
+
+  /* Options grid */
+  .options-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .option-btn {
+    position:relative; display:flex; align-items:center; gap:12px;
+    padding:16px 20px; border-radius:14px; cursor:pointer;
+    background:var(--option-bg); border:2px solid var(--option-border);
+    transition: all .25s ease; user-select:none; overflow:hidden;
+  }
+  .option-btn::before {
+    content:''; position:absolute; inset:0; opacity:0;
+    background: linear-gradient(135deg, rgba(245,197,24,.12), transparent);
+    transition: opacity .25s;
+  }
+  .option-btn:hover:not(.disabled)::before { opacity:1; }
+  .option-btn:hover:not(.disabled) { border-color:rgba(245,197,24,.4); transform:scale(1.015); }
+  .option-btn.disabled { pointer-events:none; }
+  .option-btn.selected { border-color:var(--gold); background:linear-gradient(135deg,#5c4a0a,#3d3108) !important; box-shadow:0 0 20px rgba(245,197,24,.25); }
+  .option-btn.correct { border-color:var(--correct) !important; background:linear-gradient(135deg,#0a3d1a,#0d2e14) !important; }
+  .option-btn.wrong { border-color:var(--wrong) !important; background:linear-gradient(135deg,#3d0a0a,#2e0d0d) !important; }
+  .option-btn.eliminated {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    cursor: default;
+    transition: opacity .3s ease;
+  }
+  .opt-letter {
+    font-family:'Oswald',sans-serif; font-weight:600; font-size:1.1rem;
+    min-width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+    border-radius:8px; background:rgba(255,255,255,.08); color:var(--gold); flex-shrink:0;
+  }
+  .opt-text { font-size:clamp(.95rem,2vw,1.15rem); text-align:left; line-height:1.35; }
+
+  /* Lifelines */
+  .lifelines {
+    display:flex; gap:14px; justify-content:center; margin-bottom:16px;
+  }
+  .ll-btn {
+    width:56px; height:56px; border-radius:50%; border:2px solid rgba(245,197,24,.4);
+    background:rgba(17,22,64,.85); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition: all .3s ease; position:relative; color:var(--gold);
+    box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  }
+  .ll-btn:hover:not(.used) { border-color:var(--gold); background:rgba(245,197,24,.2); transform:scale(1.1); box-shadow:0 0 18px rgba(245,197,24,.35); }
+  .ll-btn.used { opacity:.22; pointer-events:none; border-color:rgba(255,255,255,.1); }
+  .ll-btn.used::after {
+    content:'✕'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:1.6rem; color:var(--wrong); font-weight:700;
+  }
+  .ll-btn svg { width:26px; height:26px; }
+
+  #btn-fullscreen:hover { background:rgba(255,255,255,.15); border-color:var(--gold); color:var(--gold); }
+
+  /* Audience modal */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.75); backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .modal-overlay.hidden { display:none; }
+  .modal-box {
+    background:linear-gradient(135deg,#111640,#0a0e27); border:1px solid rgba(245,197,24,.3);
+    box-shadow: 0 0 50px rgba(245,197,24,.15), inset 0 0 30px rgba(30,64,175,.2);
+    border-radius:24px; padding:32px; max-width:480px; width:100%; text-align:center;
+  }
+  .modal-box.pop-anim {
+    animation: modalPopIn .4s cubic-bezier(.17,.89,.32,1.25) both;
+  }
+  @keyframes modalPopIn {
+    0% { transform: scale(0.7); opacity:0; }
+    100% { transform: scale(1); opacity:1; }
+  }
+  .modal-box h3 { font-family:'Oswald',sans-serif; font-size:1.5rem; margin-bottom:20px; color:var(--gold); }
+  .modal-box p { color:rgba(255,255,255,.7); margin-bottom:16px; line-height:1.5; }
+  .audience-bars { display:flex; align-items:flex-end; justify-content:center; gap:20px; height:160px; margin:20px 0; }
+  .audience-bar {
+    display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; max-width:70px;
+  }
+  .audience-bar .bar-fill {
+    width:100%; border-radius:6px 6px 0 0;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dim) 100%);
+    transition: height .8s cubic-bezier(.4,0,.2,1);
+  }
+  .audience-bar .bar-label { font-family:'Oswald',sans-serif; font-size:.9rem; color:rgba(255,255,255,.5); }
+  .audience-bar .bar-pct { font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600; color:var(--gold); }
+  .modal-close {
+    margin-top:16px; padding:10px 32px; border-radius:12px; border:1px solid rgba(255,255,255,.15);
+    background:rgba(255,255,255,.06); color:#fff; font-size:1rem; cursor:pointer;
+    font-family:'Oswald',sans-serif; letter-spacing:.04em; transition: all .2s;
+  }
+  .modal-close:hover { background:rgba(255,255,255,.12); }
+
+  /* Walk away & confirm */
+  .walk-away-btn {
+    margin-top:16px; padding:8px 28px; border-radius:20px; border:1px solid rgba(255,255,255,.1);
+    background:rgba(255,255,255,.04); color:rgba(255,255,255,.5); font-size:.9rem;
+    cursor:pointer; transition: all .3s; font-family:'Oswald',sans-serif; letter-spacing:.04em;
+  }
+  .walk-away-btn:hover { color:#fff; border-color:rgba(255,255,255,.3); background:rgba(255,255,255,.08); }
+
+  /* End Screen */
+  #end-screen .end-icon { width:120px; height:120px; margin-bottom:24px; }
+  #end-screen h1 {
+    font-family:'Oswald',sans-serif; font-size:clamp(2rem,5vw,3.5rem); font-weight:700;
+    text-transform:uppercase; margin-bottom:8px;
+  }
+  #end-screen .end-prize {
+    font-family:'Oswald',sans-serif; font-size:clamp(1.5rem,4vw,2.5rem); font-weight:600;
+    color:var(--gold); margin-bottom:8px;
+  }
+  #end-screen .end-sub { color:rgba(255,255,255,.5); font-size:1.1rem; margin-bottom:36px; }
+  .btn-restart {
+    font-family:'Oswald',sans-serif; font-size:1.2rem; font-weight:600;
+    padding:14px 44px; border:2px solid var(--gold); border-radius:50px;
+    background:rgba(245,197,24,.08); color:var(--gold); cursor:pointer;
+    text-transform:uppercase; letter-spacing:.06em; transition:all .3s;
+  }
+  .btn-restart:hover { background:rgba(245,197,24,.18); box-shadow:0 0 30px rgba(245,197,24,.2); }
+
+  /* Fade-in animation */
+  .fade-in { animation: fadeIn .5s ease both; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .pop-in { animation: popIn .4s cubic-bezier(.2,1.2,.4,1) both; }
+  @keyframes popIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .options-grid { grid-template-columns:1fr; }
+    .money-tree { display:none; }
+    .q-card { padding:20px; }
+    .option-btn { padding:14px 16px; }
+    .lifelines { gap:8px; }
+    .ll-btn { width:46px; height:46px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-scene">
+  <div class="stars" id="stars"></div>
+</div>
+
+<!-- ═══ START SCREEN ═══ -->
+<div id="start-screen" class="screen">
+  <div class="logo-diamond">
+    <svg viewBox="0 0 160 160" fill="none">
+      <path d="M80 10 L140 60 L80 150 L20 60 Z" fill="url(#diamondGrad)" stroke="var(--gold)" stroke-width="2"/>
+      <path d="M20 60 H140" stroke="var(--gold)" stroke-width="1.5" opacity=".5"/>
+      <path d="M80 10 L60 60" stroke="var(--gold)" stroke-width="1" opacity=".3"/>
+      <path d="M80 10 L100 60" stroke="var(--gold)" stroke-width="1" opacity=".3"/>
+      <path d="M60 60 L80 150" stroke="var(--gold)" stroke-width="1" opacity=".2"/>
+      <path d="M100 60 L80 150" stroke="var(--gold)" stroke-width="1" opacity=".2"/>
+      <defs>
+        <linearGradient id="diamondGrad" x1="80" y1="10" x2="80" y2="150" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#f5c518" stop-opacity=".3"/>
+          <stop offset="100%" stop-color="#1a1f4e" stop-opacity=".8"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+  <h1>Who Wants to Be<br>a Millionaire?</h1>
+  <p class="subtitle">Edisi Pengetahuan Umum</p>
+
+  <!-- Pilihan Mode Timer -->
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:32px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); padding:8px 16px; border-radius:24px; backdrop-filter:blur(6px);">
+    <span style="color:rgba(255,255,255,.7); font-weight:600; font-size:.95rem; margin-right:4px;">Waktu:</span>
+    <button type="button" id="btn-timer-on" onclick="setTimerMode(true)" style="padding:8px 18px; border-radius:14px; font-family:'Oswald',sans-serif; font-size:1rem; font-weight:700; border:2px solid var(--gold); background:var(--gold); color:#0a0e27; cursor:pointer; transition:all .2s;">
+      ⏱️ 30 Detik
+    </button>
+    <button type="button" id="btn-timer-off" onclick="setTimerMode(false)" style="padding:8px 18px; border-radius:14px; font-family:'Oswald',sans-serif; font-size:1rem; font-weight:700; border:1px solid rgba(255,255,255,.2); background:transparent; color:rgba(255,255,255,.5); cursor:pointer; transition:all .2s;">
+      ☕ Santai (Tanpa Batas)
+    </button>
+  </div>
+
+  <button class="btn-start" onclick="startGame()">Mulai</button>
+</div>
+
+<!-- ═══ GAME SCREEN ═══ -->
+<div id="game-screen" class="screen hidden">
+
+  <!-- Top Controls (Fullscreen) -->
+  <div style="position:absolute; top:16px; left:20px; z-index:25;">
+    <button onclick="toggleFullscreen()" id="btn-fullscreen" title="Layar Penuh (F)" style="width:48px; height:48px; border-radius:14px; border:1px solid rgba(255,255,255,.15); background:rgba(10,14,39,.75); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; transition:all .2s; box-shadow:0 4px 12px rgba(0,0,0,.3);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+        <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Money Tree -->
+  <div class="money-tree" id="money-tree">
+    <div class="mt-toggle" onclick="toggleTree()">
+      <span class="mt-toggle-label" id="mt-toggle-label"></span>
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>
+    </div>
+    <div id="mt-rows"></div>
+  </div>
+
+  <!-- Question Area -->
+  <div class="question-area">
+    <!-- Lifelines -->
+    <div class="lifelines" id="lifelines">
+      <button class="ll-btn" id="ll-5050" onclick="useFiftyFifty()" title="Bantuan 50:50 (Hapus 2 Jawaban Salah)">
+        <span style="font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:700;letter-spacing:-0.5px;">50:50</span>
+      </button>
+      <button class="ll-btn" id="ll-phone" onclick="usePhoneAFriend()" title="Bantuan Telepon Teman">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+        </svg>
+      </button>
+      <button class="ll-btn" id="ll-audience" onclick="useAskAudience()" title="Bantuan Polling Penonton">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="q-header">
+      <span class="q-number" id="q-number">Soal 1</span>
+      <div class="timer-wrap" id="timer-wrap">
+        <svg viewBox="0 0 72 72">
+          <circle class="track" cx="36" cy="36" r="32"/>
+          <circle class="progress" id="timer-ring" cx="36" cy="36" r="32"/>
+        </svg>
+        <span class="timer-text" id="timer-text">30</span>
+      </div>
+      <span class="q-prize" id="q-prize">Rp 1 Juta</span>
+    </div>
+
+    <div class="q-card" id="q-card">
+      <h2 id="q-text">Pertanyaan akan muncul di sini</h2>
+    </div>
+
+    <div class="options-grid" id="options-grid"></div>
+
+    <div style="text-align:center;">
+      <button class="walk-away-btn" id="walk-away-btn" onclick="confirmWalkAway()">🚶 Berhenti &amp; Ambil Hadiah</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ═══ -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<!-- ═══ END SCREEN ═══ -->
+<div id="end-screen" class="screen hidden">
+  <div class="end-icon" id="end-icon"></div>
+  <h1 id="end-title">Selesai!</h1>
+  <div class="end-prize" id="end-prize">Rp 0</div>
+  <p class="end-sub" id="end-sub">Terima kasih telah bermain</p>
+  <button class="btn-restart" onclick="restartGame()">Main Lagi</button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════ */
+const PRIZE_LADDER = [
+  'Rp 50.000','Rp 125.000','Rp 250.000','Rp 500.000','Rp 1.000.000',
+  'Rp 2.000.000','Rp 4.000.000','Rp 8.000.000','Rp 16.000.000','Rp 32.000.000',
+  'Rp 64.000.000','Rp 125.000.000','Rp 250.000.000','Rp 500.000.000','Rp 1.000.000.000'
+];
+const SAFE_LEVELS = [4, 9]; // index 4 (Rp 1 Juta) & 9 (Rp 32 Juta)
+const TIMER_SECONDS = 30;
+const CIRC = 2 * Math.PI * 32;
+
+const allQuestions = [
+  // Level 1-5 (Mudah)
+  { q:"Ibukota negara Indonesia adalah?", options:["Jakarta","Bandung","Surabaya","Yogyakarta"], answer:0 },
+  { q:"Warna bendera Indonesia dari atas ke bawah adalah?", options:["Putih-Merah","Merah-Putih","Merah-Merah","Putih-Putih"], answer:1 },
+  { q:"Hari kemerdekaan Indonesia diperingati setiap tanggal?", options:["1 Juni","17 Agustus","28 Oktober","10 November"], answer:1 },
+  { q:"Mata uang resmi Indonesia adalah?", options:["Ringgit","Baht","Rupiah","Peso"], answer:2 },
+  { q:"Planet terdekat dengan matahari adalah?", options:["Venus","Mars","Merkurius","Bumi"], answer:2 },
+  // Level 6-10 (Sedang)
+  { q:"Siapa penemu telepon?", options:["Thomas Edison","Nikola Tesla","Alexander Graham Bell","Guglielmo Marconi"], answer:2 },
+  { q:"Negara dengan luas wilayah terbesar di dunia adalah?", options:["Kanada","Amerika Serikat","Tiongkok","Rusia"], answer:3 },
+  { q:"Candi Borobudur terletak di provinsi?", options:["DI Yogyakarta","Jawa Timur","Jawa Tengah","Jawa Barat"], answer:2 },
+  { q:"Perang Dunia II berakhir pada tahun?", options:["1943","1944","1945","1946"], answer:2 },
+  { q:"Organ tubuh manusia yang berfungsi menyaring darah adalah?", options:["Hati","Ginjal","Paru-paru","Jantung"], answer:1 },
+  // Level 11-15 (Sulit)
+  { q:"Siapa presiden pertama Amerika Serikat?", options:["Thomas Jefferson","Abraham Lincoln","George Washington","John Adams"], answer:2 },
+  { q:"Selat Malaka menghubungkan dua laut/samudra, yaitu?", options:["Laut Jawa & Laut Sulawesi","Samudra Hindia & Laut Cina Selatan","Laut Merah & Laut Tengah","Samudra Pasifik & Samudra Hindia"], answer:1 },
+  { q:"Perjanjian Westphalia (1648) mengakhiri perang apa?", options:["Perang Salib","Perang Napoleon","Perang 30 Tahun","Perang 100 Tahun"], answer:2 },
+  { q:"Unsur kimia dengan simbol 'Au' adalah?", options:["Perak","Aluminium","Emas","Tembaga"], answer:2 },
+  { q:"Konferensi Asia-Afrika tahun 1955 diadakan di kota?", options:["Jakarta","Bandung","Surabaya","Semarang"], answer:1 },
+];
+
+/* ═══════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════ */
+let questions = [];
+let currentQ = 0;
+let timeLeft = TIMER_SECONDS;
+let timerInterval = null;
+let answered = false;
+let lifelines = { fifty:false, phone:false, audience:false };
+let treeCollapsed = false;
+let isTimerActive = true;
+let eliminatedIndices = [];
+let heartbeatInterval = null;
+
+/* ═══════════════════════════════════════════
+   AUDIO (Singleton)
+   ═══════════════════════════════════════════ */
+let audioCtx = null;
+function getAudio(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) audioCtx = new AC();
+  }
+  if(audioCtx && audioCtx.state==='suspended') audioCtx.resume().catch(()=>{});
+  return audioCtx;
+}
+function playTone(freq, dur, type='sine', vol=.12){
+  try{
+    const ctx=getAudio(); if(!ctx) return;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+dur);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+dur);
+  }catch(e){}
+}
+function sfxCorrect(){ playTone(523,.08); setTimeout(()=>playTone(659,.08),100); setTimeout(()=>playTone(784,.3),200); }
+function sfxWrong(){ playTone(330,.15,'triangle'); setTimeout(()=>playTone(220,.4,'triangle'),150); }
+function sfxTick(urgent){ playTone(urgent?880:587, .06, urgent?'triangle':'sine', .08); }
+function sfxSelect(){ playTone(440,.06,'sine',.08); }
+function sfxWin(){ playTone(523,.1); setTimeout(()=>playTone(659,.1),120); setTimeout(()=>playTone(784,.1),240); setTimeout(()=>playTone(1047,.4),360); }
+
+/* ─── EFEK DETAK JANTUNG (HEARTBEAT) ─── */
+function playHeartbeatThump(vol = 0.22){
+  try {
+    const ctx = getAudio();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    
+    // Thump 1 ("lub")
+    const o1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    o1.type = 'sine';
+    o1.frequency.setValueAtTime(75, now);
+    o1.frequency.exponentialRampToValueAtTime(35, now + 0.1);
+    g1.gain.setValueAtTime(vol, now);
+    g1.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    o1.connect(g1);
+    g1.connect(ctx.destination);
+    o1.start(now);
+    o1.stop(now + 0.1);
+
+    // Thump 2 ("dub") ~130ms setelahnya
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(62, now + 0.13);
+    o2.frequency.exponentialRampToValueAtTime(30, now + 0.22);
+    g2.gain.setValueAtTime(vol * 0.7, now + 0.13);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    o2.connect(g2);
+    g2.connect(ctx.destination);
+    o2.start(now + 0.13);
+    o2.stop(now + 0.22);
+  } catch(e){}
+}
+
+function startHeartbeat(){
+  stopHeartbeat();
+  playHeartbeatThump();
+  heartbeatInterval = setInterval(()=>{
+    if(!answered){
+      playHeartbeatThump();
+    }
+  }, 1400);
+}
+
+function stopHeartbeat(){
+  if(heartbeatInterval){
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   CONFETTI ENGINE (Canvas)
+   ═══════════════════════════════════════════ */
+let confettiAnimationId = null;
+const confettiCanvas = document.createElement('canvas');
+confettiCanvas.id = 'confetti-canvas';
+confettiCanvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:150;';
+document.body.appendChild(confettiCanvas);
+
+function launchConfetti(durationMs = 3000){
+  const ctx = confettiCanvas.getContext('2d');
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+  
+  const colors = ['#f5c518', '#22c55e', '#3b82f6', '#ec4899', '#f97316', '#eab308', '#a855f7'];
+  const pieces = [];
+  for(let i=0; i<110; i++){
+    pieces.push({
+      x: Math.random() * confettiCanvas.width,
+      y: Math.random() * -confettiCanvas.height * 0.4,
+      w: 8 + Math.random() * 8,
+      h: 5 + Math.random() * 5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vy: 2.5 + Math.random() * 5.5,
+      vx: (Math.random() - 0.5) * 3.5,
+      rot: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 12
+    });
+  }
+  
+  const startTime = Date.now();
+  if(confettiAnimationId) cancelAnimationFrame(confettiAnimationId);
+  
+  function frame(){
+    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    const elapsed = Date.now() - startTime;
+    pieces.forEach(p => {
+      p.y += p.vy;
+      p.x += p.vx;
+      p.rot += p.rotSpeed;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rot * Math.PI) / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    
+    if (elapsed < durationMs) {
+      confettiAnimationId = requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      confettiAnimationId = null;
+    }
+  }
+  frame();
+}
+
+/* ═══════════════════════════════════════════
+   STARS
+   ═══════════════════════════════════════════ */
+function createStars(){
+  const c=document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const s=document.createElement('span');
+    s.style.left=Math.random()*100+'%';
+    s.style.top=Math.random()*100+'%';
+    s.style.animationDelay=Math.random()*4+'s';
+    s.style.animationDuration=(2+Math.random()*3)+'s';
+    s.style.width=s.style.height=(1+Math.random()*2)+'px';
+    c.appendChild(s);
+  }
+}
+createStars();
+
+/* ─── PENGACAKAN POSISI JAWABAN (A, B, C, D) ─── */
+function prepareShuffledQuestion(originalQ){
+  const originalOptions = originalQ.options;
+  const correctText = originalOptions[originalQ.answer];
+  const shuffledOptions = [...originalOptions].sort(() => Math.random() - 0.5);
+  const newAnswerIndex = shuffledOptions.indexOf(correctText);
+  return {
+    q: originalQ.q,
+    options: shuffledOptions,
+    answer: newAnswerIndex
+  };
+}
+
+/* ─── PILIHAN MODE TIMER ─── */
+function setTimerMode(active){
+  isTimerActive = active;
+  const btnOn = document.getElementById('btn-timer-on');
+  const btnOff = document.getElementById('btn-timer-off');
+  if(active){
+    btnOn.style.border = '2px solid var(--gold)';
+    btnOn.style.background = 'var(--gold)';
+    btnOn.style.color = '#0a0e27';
+    btnOff.style.border = '1px solid rgba(255,255,255,.2)';
+    btnOff.style.background = 'transparent';
+    btnOff.style.color = 'rgba(255,255,255,.5)';
+  } else {
+    btnOff.style.border = '2px solid var(--gold)';
+    btnOff.style.background = 'var(--gold)';
+    btnOff.style.color = '#0a0e27';
+    btnOn.style.border = '1px solid rgba(255,255,255,.2)';
+    btnOn.style.background = 'transparent';
+    btnOn.style.color = 'rgba(255,255,255,.5)';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   GAME FLOW
+   ═══════════════════════════════════════════ */
+function show(id){ document.getElementById(id).classList.remove('hidden'); }
+function hide(id){ document.getElementById(id).classList.add('hidden'); }
+
+function startGame(){
+  getAudio();
+  // Acak posisi pilihan jawaban A, B, C, D untuk setiap soal
+  questions = allQuestions.map(prepareShuffledQuestion);
+  currentQ = 0;
+  lifelines = { fifty:false, phone:false, audience:false };
+  ['ll-5050','ll-phone','ll-audience'].forEach(id=>document.getElementById(id).classList.remove('used'));
+  hide('start-screen');
+  show('game-screen');
+  buildMoneyTree();
+  loadQuestion();
+}
+
+function restartGame(){
+  stopHeartbeat();
+  hide('end-screen');
+  show('start-screen');
+}
+
+/* ─── Money Tree ─── */
+function buildMoneyTree(){
+  const c=document.getElementById('mt-rows');
+  c.innerHTML='';
+  for(let i=PRIZE_LADDER.length-1;i>=0;i--){
+    const row=document.createElement('div');
+    row.className='mt-row';
+    row.id='mt-'+i;
+    row.innerHTML=`<span class="level">${i+1}</span><span class="amount">${PRIZE_LADDER[i]}</span>`;
+    if(SAFE_LEVELS.includes(i)) row.classList.add('safe');
+    c.appendChild(row);
+  }
+  updateMoneyTree();
+}
+
+function updateMoneyTree(){
+  for(let i=0;i<PRIZE_LADDER.length;i++){
+    const row=document.getElementById('mt-'+i);
+    row.classList.remove('current','passed','won');
+    if(i<currentQ) row.classList.add('passed');
+    if(i===currentQ) row.classList.add('current');
+  }
+  const label=document.getElementById('mt-toggle-label');
+  label.textContent=PRIZE_LADDER[currentQ];
+}
+
+function toggleTree(){
+  const tree=document.getElementById('money-tree');
+  treeCollapsed=!treeCollapsed;
+  tree.classList.toggle('collapsed',treeCollapsed);
+}
+
+/* ─── Load Question ─── */
+function loadQuestion(){
+  answered = false;
+  eliminatedIndices = [];
+  const q = questions[currentQ];
+  document.getElementById('q-number').textContent = `Soal ${currentQ+1}`;
+  document.getElementById('q-prize').textContent = PRIZE_LADDER[currentQ];
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('walk-away-btn').style.display = currentQ > 0 ? '' : 'none';
+  updateMoneyTree();
+
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  q.options.forEach((opt,i)=>{
+    const btn = document.createElement('div');
+    btn.className = 'option-btn fade-in';
+    btn.style.animationDelay = (i*0.08)+'s';
+    btn.dataset.idx = i;
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span><span class="opt-text">${opt}</span>`;
+    btn.onclick = () => selectAnswer(i);
+    grid.appendChild(btn);
+  });
+
+  startTimer();
+  startHeartbeat();
+}
+
+/* ─── Timer ─── */
+function startTimer(){
+  clearInterval(timerInterval);
+  const ring = document.getElementById('timer-ring');
+  const timerText = document.getElementById('timer-text');
+
+  if(!isTimerActive){
+    timerText.textContent = '∞';
+    timerText.style.color = 'var(--gold)';
+    ring.style.strokeDashoffset = 0;
+    ring.classList.remove('urgent');
+    return;
+  }
+
+  timeLeft = TIMER_SECONDS;
+  updateTimerDisplay();
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft<=5 && timeLeft>0) sfxTick(timeLeft<=2);
+    if(timeLeft<=0){
+      clearInterval(timerInterval);
+      stopHeartbeat();
+      timeUp();
+    }
+  },1000);
+}
+
+function updateTimerDisplay(){
+  if(!isTimerActive) return;
+  const t = Math.max(timeLeft,0);
+  document.getElementById('timer-text').textContent = t;
+  const ring = document.getElementById('timer-ring');
+  ring.style.strokeDasharray = CIRC;
+  ring.style.strokeDashoffset = CIRC*(1-t/TIMER_SECONDS);
+  ring.classList.toggle('urgent', t<=5);
+  document.getElementById('timer-text').style.color = t<=5 ? 'var(--wrong)' : '';
+}
+
+function timeUp(){
+  if(answered) return;
+  answered = true;
+  stopHeartbeat();
+  revealCorrect();
+  setTimeout(()=>endGame(false), 3000);
+}
+
+/* ─── Answer ─── */
+function selectAnswer(idx){
+  if(answered) return;
+  answered = true;
+  clearInterval(timerInterval);
+  stopHeartbeat();
+  sfxSelect();
+
+  const btns = document.querySelectorAll('.option-btn');
+  btns.forEach(b=>b.classList.add('disabled'));
+  btns[idx].classList.add('selected');
+
+  // Dramatic pause sebelum jawaban diungkap
+  setTimeout(()=>{
+    const q = questions[currentQ];
+    if(idx === q.answer){
+      btns[idx].classList.remove('selected');
+      btns[idx].classList.add('correct');
+      sfxCorrect();
+
+      // Luncurkan efek confetti jika mencapai titik aman atau soal terakhir
+      if(SAFE_LEVELS.includes(currentQ) || currentQ === PRIZE_LADDER.length - 1){
+        launchConfetti(2600);
+      }
+
+      // Tampilkan popup modal selamat dengan animasi
+      setTimeout(()=>{
+        showCorrectModal();
+      }, 700);
+    } else {
+      btns[idx].classList.remove('selected');
+      btns[idx].classList.add('wrong');
+      sfxWrong();
+      revealCorrect();
+      setTimeout(()=>endGame(false), 3000);
+    }
+  }, 2000);
+}
+
+function revealCorrect(){
+  const q = questions[currentQ];
+  const btns = document.querySelectorAll('.option-btn');
+  btns.forEach(b=>b.classList.add('disabled'));
+  btns[q.answer].classList.add('correct');
+}
+
+/* ─── End Game ─── */
+function endGame(won, grandPrize=false){
+  clearInterval(timerInterval);
+  stopHeartbeat();
+  hide('game-screen');
+
+  let prize = 'Rp 0';
+  let title = 'Sayang Sekali!';
+  let sub = 'Jangan menyerah, coba lagi!';
+  let iconColor = 'var(--wrong)';
+  let iconPath = 'M6 6l12 12M18 6L6 18';
+
+  if(grandPrize){
+    prize = PRIZE_LADDER[PRIZE_LADDER.length-1];
+    title = 'Luar Biasa!';
+    sub = 'Selamat! Anda berhasil menjadi Miliarder Rp 1.000.000.000!';
+    iconColor = 'var(--gold)';
+    iconPath = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
+    launchConfetti(4500);
+  } else if(won){
+    prize = PRIZE_LADDER[currentQ > 0 ? currentQ - 1 : 0];
+    title = 'Selamat!';
+    sub = 'Keputusan bijak! Anda memilih untuk berhenti dan mengamankan hadiah.';
+    iconColor = 'var(--gold)';
+    iconPath = 'M5 13l4 4L19 7';
+    launchConfetti(2500);
+  } else {
+    let safePrize = 'Rp 0';
+    for(let s of SAFE_LEVELS){
+      if(currentQ > s) safePrize = PRIZE_LADDER[s];
+    }
+    prize = safePrize;
+    if(safePrize !== 'Rp 0'){
+      sub = `Anda pulang membawa hadiah titik aman: ${safePrize}`;
+    }
+  }
+
+  document.getElementById('end-title').textContent = title;
+  document.getElementById('end-prize').textContent = prize;
+  document.getElementById('end-sub').textContent = sub;
+  document.getElementById('end-icon').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" style="width:100%;height:100%;"><path stroke-linecap="round" stroke-linejoin="round" d="${iconPath}"/></svg>`;
+  document.getElementById('end-prize').style.color = iconColor;
+
+  show('end-screen');
+}
+
+/* ─── KONFIRMASI BERHENTI & AMBIL HADIAH ─── */
+function confirmWalkAway(){
+  if(answered) return;
+  const prize = currentQ > 0 ? PRIZE_LADDER[currentQ - 1] : 'Rp 0';
+  const box = document.getElementById('modal-box');
+  box.className = 'modal-box pop-anim';
+  box.innerHTML = `
+    <div style="font-size:2.8rem; margin-bottom:8px;">🚶</div>
+    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:10px; text-transform:uppercase;">BERHENTI SEKARANG?</h3>
+    <p style="color:rgba(255,255,255,.8); font-size:1rem; margin-bottom:14px; line-height:1.5;">
+      Jika berhenti sekarang, Anda akan membawa pulang hadiah aman sebesar:
+    </p>
+    <div style="font-family:'Oswald',sans-serif; font-size:2.2rem; font-weight:700; color:var(--gold); margin-bottom:24px; text-shadow:0 0 20px rgba(245,197,24,.4);">
+      ${prize}
+    </div>
+    <div style="display:flex; gap:12px; justify-content:center;">
+      <button onclick="hideModal()" style="padding:12px 24px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:#fff; font-family:'Oswald',sans-serif; font-size:1rem; cursor:pointer; transition:all .2s;">
+        Kembali Bermain
+      </button>
+      <button class="modal-close" onclick="executeWalkAway()" style="padding:12px 28px; border-radius:12px; border:none; background:linear-gradient(135deg,#f59e0b,#d97706); color:#0a0e27; font-family:'Oswald',sans-serif; font-weight:700; font-size:1rem; cursor:pointer; box-shadow:0 0 16px rgba(245,158,11,.3); transition:all .2s;">
+        Ya, Ambil Hadiah
+      </button>
+    </div>
+  `;
+  show('modal');
+}
+
+function executeWalkAway(){
+  hideModal();
+  walkAway();
+}
+
+function walkAway(){
+  clearInterval(timerInterval);
+  stopHeartbeat();
+  answered = true;
+  endGame(true);
+}
+
+/* ═══════════════════════════════════════════
+   LIFELINES
+   ═══════════════════════════════════════════ */
+function useFiftyFifty(){
+  if(lifelines.fifty || answered) return;
+  lifelines.fifty = true;
+  document.getElementById('ll-5050').classList.add('used');
+  playTone(550, 0.12, 'triangle');
+
+  const q = questions[currentQ];
+  const wrongIdxs = [];
+  q.options.forEach((_,i)=>{ if(i !== q.answer) wrongIdxs.push(i); });
+  wrongIdxs.sort(() => Math.random() - 0.5);
+  const remove = wrongIdxs.slice(0, 2);
+  eliminatedIndices = remove;
+
+  const btns = document.querySelectorAll('.option-btn');
+  remove.forEach(i => btns[i].classList.add('eliminated'));
+}
+
+function usePhoneAFriend(){
+  if(lifelines.phone || answered) return;
+  lifelines.phone = true;
+  document.getElementById('ll-phone').classList.add('used');
+  sfxSelect();
+
+  const q = questions[currentQ];
+  const letters = ['A','B','C','D'];
+  
+  // SINKRONISASI 50:50: Teman hanya memilih opsi yang BELUM terhapus
+  const available = [0, 1, 2, 3].filter(i => !eliminatedIndices.includes(i));
+  const confident = Math.random() < 0.85;
+  const suggested = confident ? q.answer : (available.find(i => i !== q.answer) ?? q.answer);
+
+  const phrases = [
+    `Hmm, menurutku jawabannya <b>${letters[suggested]}</b>. ${confident?'Aku cukup yakin!':'Tapi aku tidak terlalu yakin...'}`,
+    `Aku pernah baca tentang ini. Sepertinya jawaban <b>${letters[suggested]}</b>. ${confident?'Ya, aku yakin itu benar.':'Tapi bisa saja aku salah.'}`,
+    `Kalau tidak salah, jawabannya <b>${letters[suggested]}</b>. ${confident?'Aku 90% yakin!':'Tapi coba pikirkan lagi ya.'}`
+  ];
+
+  const box = document.getElementById('modal-box');
+  box.className = 'modal-box pop-anim';
+  box.innerHTML = `
+    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:12px;">📞 Telepon Teman</h3>
+    <p style="font-style:italic;color:rgba(255,255,255,.4);margin-bottom:12px;">"Halo, aku butuh bantuanmu..."</p>
+    <p style="font-size:1.1rem; line-height:1.6; margin-bottom:20px;">${phrases[Math.floor(Math.random()*phrases.length)]}</p>
+    <button class="modal-close" onclick="hideModal()">Terima Kasih! [Spasi/Enter]</button>
+  `;
+  show('modal');
+}
+
+function useAskAudience(){
+  if(lifelines.audience || answered) return;
+  lifelines.audience = true;
+  document.getElementById('ll-audience').classList.add('used');
+  sfxSelect();
+
+  const q = questions[currentQ];
+  const letters = ['A','B','C','D'];
+  let pcts = [0, 0, 0, 0];
+
+  // SINKRONISASI 50:50: Opsi yang terhapus mendapat 0%, opsi sisa membagi 100%
+  if(eliminatedIndices.length > 0){
+    eliminatedIndices.forEach(i => pcts[i] = 0);
+    const remainingWrong = [0, 1, 2, 3].find(i => i !== q.answer && !eliminatedIndices.includes(i));
+    const correctPct = 60 + Math.floor(Math.random() * 26); // 60% - 85%
+    pcts[q.answer] = correctPct;
+    pcts[remainingWrong] = 100 - correctPct;
+  } else {
+    let remaining = 100;
+    const correctPct = 40 + Math.floor(Math.random() * 30);
+    pcts[q.answer] = correctPct;
+    remaining -= correctPct;
+    const others = [0, 1, 2, 3].filter(i => i !== q.answer);
+    others.forEach((oi, idx)=>{
+      if(idx === others.length - 1){ pcts[oi] = remaining; }
+      else { const p = Math.floor(Math.random() * remaining); pcts[oi] = p; remaining -= p; }
+    });
+  }
+
+  const maxPct = Math.max(...pcts, 1);
+  let barsHTML = '';
+  letters.forEach((l,i)=>{
+    const isEliminated = eliminatedIndices.includes(i);
+    const h = isEliminated ? 0 : Math.max(8, (pcts[i] / maxPct) * 140);
+    barsHTML += `<div class="audience-bar" style="${isEliminated ? 'opacity:.3;' : ''}">
+      <div class="bar-pct">${pcts[i]}%</div>
+      <div class="bar-fill" style="height:0px;" data-h="${h}"></div>
+      <div class="bar-label">${l}</div>
+    </div>`;
+  });
+
+  const box = document.getElementById('modal-box');
+  box.className = 'modal-box pop-anim';
+  box.innerHTML = `
+    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:12px;">👥 Polling Penonton</h3>
+    ${eliminatedIndices.length > 0 ? '<p style="color:var(--safe); font-size:.9rem; margin-bottom:8px;">*Penonton hanya memilih di antara opsi yang tersisa (50:50)</p>' : ''}
+    <div class="audience-bars">${barsHTML}</div>
+    <button class="modal-close" onclick="hideModal()">Terima Kasih! [Spasi/Enter]</button>
+  `;
+  show('modal');
+
+  setTimeout(()=>{
+    document.querySelectorAll('.bar-fill').forEach(bar=>{
+      bar.style.height = bar.dataset.h + 'px';
+    });
+  }, 100);
+}
+
+function showCorrectModal(){
+  const isLast = (currentQ === PRIZE_LADDER.length - 1);
+  const isSafe = SAFE_LEVELS.includes(currentQ);
+  const prize = PRIZE_LADDER[currentQ];
+
+  const box = document.getElementById('modal-box');
+  box.className = 'modal-box pop-anim';
+  box.innerHTML = `
+    <div style="width:72px; height:72px; margin:0 auto 16px; border-radius:50%; background:rgba(22,163,74,.2); border:2px solid var(--correct); display:flex; align-items:center; justify-content:center; box-shadow:0 0 25px rgba(22,163,74,.4);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--correct)" stroke-width="3" style="width:38px;height:38px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <h3 style="font-family:'Oswald',sans-serif; font-size:2rem; color:var(--correct); margin-bottom:6px; letter-spacing:.03em; text-transform:uppercase;">SELAMAT! JAWABAN BENAR!</h3>
+    <p style="color:rgba(255,255,255,.7); font-size:1.05rem; margin-bottom:8px;">Anda berhasil meraih hadiah level ini:</p>
+    <div style="font-family:'Oswald',sans-serif; font-size:2.3rem; font-weight:700; color:var(--gold); margin-bottom:14px; text-shadow:0 0 24px rgba(245,197,24,.4);">
+      ${prize}
+    </div>
+    ${isSafe ? `<div style="background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.4); color:var(--safe); padding:10px 16px; border-radius:14px; font-size:.95rem; font-weight:600; margin-bottom:20px;">🛡️ Titik Aman Terkunci! Hadiah ini dijamin tidak akan hangus.</div>` : ''}
+    <button class="modal-close" style="background:linear-gradient(135deg,#f5c518,#b8960f); color:#0a0e27; font-weight:700; font-size:1.1rem; padding:14px 38px; border:none; border-radius:14px; cursor:pointer; font-family:'Oswald',sans-serif; letter-spacing:.04em; box-shadow:0 0 25px rgba(245,197,24,.35); transition:all .2s;" onclick="nextQuestionAfterCorrect()">
+      ${isLast ? 'LIHAT HASIL KEMENANGAN 🏆' : 'LANJUT KE SOAL BERIKUTNYA ➔ [Spasi/Enter]'}
+    </button>
+  `;
+  show('modal');
+}
+
+function nextQuestionAfterCorrect(){
+  hideModal();
+  if(currentQ === PRIZE_LADDER.length - 1){
+    sfxWin();
+    endGame(true, true);
+  } else {
+    currentQ++;
+    loadQuestion();
+  }
+}
+
+function toggleFullscreen(){
+  if (!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(e=>console.warn(e.message));
+  } else if (document.exitFullscreen){
+    document.exitFullscreen();
+  }
+}
+
+function hideModal(){ hide('modal'); }
+
+/* ─── DUKUNGAN KEYBOARD (F untuk Fullscreen, Spasi / Enter untuk Modal) ─── */
+window.addEventListener('keydown', (e) => {
+  // Tombol F untuk fullscreen
+  if (e.key === 'f' || e.key === 'F') {
+    toggleFullscreen();
+  }
+  // Tombol Spasi atau Enter untuk konfirmasi/tutup modal
+  if (e.key === ' ' || e.key === 'Enter') {
+    const modal = document.getElementById('modal');
+    if (!modal.classList.contains('hidden')) {
+      e.preventDefault();
+      const primaryBtn = modal.querySelector('.modal-close');
+      if (primaryBtn) {
+        primaryBtn.click();
+      } else {
+        hideModal();
+      }
+    }
+  }
+});
+
+</script>
+</body>
+</html>
