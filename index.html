@@ -119,12 +119,32 @@
                 <h3 class="text-6xl font-black text-white tracking-wide mb-2">Jawaban <span id="correct-letter" class="text-green-400">A</span> Benar!</h3>
             </div>
 
-            <!-- Bagian Atas: Soal -->
-            <div class="glass-panel w-full py-8 px-4 text-center shadow-lg relative pt-24">
-                <div id="pane-B" class="split-pane flex-1 relative flex flex-col">
-                    <div class="absolute top-4 right-4 bg-purple-600 text-white px-4 py-2 rounded-xl text-2xl font-bold shadow-md">Opsi B</div>
-                    <div class="flex-1 flex items-center justify-center p-8">
-                        <span id="text-B" class="text-5xl md:text-7xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">Jawaban B</span>
+            <!-- Bagian Atas: Soal & Timer -->
+            <div class="glass-panel w-full py-8 px-4 text-center shadow-lg relative pt-24 z-[55]">
+                <h2 id="question-text" class="text-4xl md:text-5xl lg:text-6xl font-black mb-6 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-white px-10 leading-snug">
+                    Pertanyaan akan muncul di sini
+                </h2>
+                <div class="inline-block bg-black/80 border border-white/20 px-8 py-3 rounded-full shadow-xl">
+                    <span class="text-2xl text-gray-300 font-bold uppercase tracking-widest mr-3">Waktu:</span>
+                    <span id="timer-text" class="text-5xl font-black text-white drop-shadow-md">30</span>
+                </div>
+            </div>
+
+            <!-- Bagian Bawah: Layar Terbelah Dua (Opsi A & B) -->
+            <div class="flex-1 flex flex-row w-full h-full relative z-[50]">
+                <!-- OPSI A (Sisi Kiri) -->
+                <div id="pane-A" class="split-pane flex-1 relative flex flex-col border-r-2 border-white/20">
+                    <div class="absolute top-6 left-6 bg-orange-600 text-white px-8 py-3 rounded-2xl text-4xl font-black shadow-lg">A</div>
+                    <div class="flex-1 flex items-center justify-center p-12">
+                        <span id="text-A" class="text-4xl md:text-6xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,1)] text-white">Jawaban A</span>
+                    </div>
+                </div>
+
+                <!-- OPSI B (Sisi Kanan) -->
+                <div id="pane-B" class="split-pane flex-1 relative flex flex-col border-l-2 border-white/20">
+                    <div class="absolute top-6 right-6 bg-purple-600 text-white px-8 py-3 rounded-2xl text-4xl font-black shadow-lg">B</div>
+                    <div class="flex-1 flex items-center justify-center p-12">
+                        <span id="text-B" class="text-4xl md:text-6xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,1)] text-white">Jawaban B</span>
                     </div>
                 </div>
             </div>
