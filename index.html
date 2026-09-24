@@ -1,425 +1,422 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game IFP Interaktif</title>
-    <!-- Menggunakan Tailwind CSS untuk styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
-            background-color: #000; /* Latar belakang hitam sebelum kamera aktif */
-            color: white;
-        }
-
-        /* Styling untuk feed kamera agar menutupi seluruh layar dan di-mirror */
-        #camera-feed {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            object-fit: cover;
-            z-index: 1;
-            transform: scaleX(-1); /* Efek cermin agar gerakan siswa terasa natural */
-        }
-
-        /* Container UI utama */
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Kotak soal dengan latar belakang sedikit gelap tanpa blur */
-        .glass-panel {
-            background: rgba(0, 0, 0, 0.4);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        /* Transisi halus saat warna overlay berubah */
-        .split-pane {
-            transition: background-color 0.5s ease-in-out;
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-
-        /* Warna feedback */
-        .bg-correct {
-            background-color: rgba(59, 130, 246, 0.7) !important; /* Biru transparan */
-        }
-        .bg-incorrect {
-            background-color: rgba(239, 68, 68, 0.7) !important; /* Merah transparan */
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kuis Gerak Cerdas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;600;700&display=swap');
+  :root{
+    --navy:#0B1220; --coral:#FF6B4A; --teal:#14B8A6; --gold:#FDCB3A;
+    --ok:#22C55E; --bad:#EF4444;
+  }
+  html,body{margin:0;overflow:hidden;background:#000;color:#fff;font-family:'Inter',sans-serif;height:100%;}
+  h1,h2,.display{font-family:'Fredoka',sans-serif;}
+  #camera-feed{position:absolute;inset:0;width:100vw;height:100vh;object-fit:cover;transform:scaleX(-1);z-index:1;}
+  .vignette-top{position:absolute;top:0;left:0;right:0;height:38%;background:linear-gradient(to bottom, rgba(11,18,32,.85), transparent);z-index:2;pointer-events:none;}
+  .vignette-bottom{position:absolute;bottom:0;left:0;right:0;height:18%;background:linear-gradient(to top, rgba(11,18,32,.5), transparent);z-index:2;pointer-events:none;}
+  #ui-layer{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;}
+  .pane{transition:background-color .45s ease, box-shadow .45s ease;}
+  .pane-a-idle{background:transparent;}
+  .pane-b-idle{background:transparent;}
+  .pane-correct{background:rgba(34,197,94,.35) !important; box-shadow:inset 0 0 0 6px rgba(253,203,58,.85);}
+  .pane-wrong{background:rgba(20,20,25,.35) !important;}
+  .pane-divider{position:absolute;left:50%;top:50%;bottom:0;width:4px;background:var(--gold);transform:translateX(-50%);z-index:51;box-shadow:0 0 16px rgba(253,203,58,.6);}
+  .badge-pop{animation:pop .5s cubic-bezier(.2,1.4,.4,1) both;}
+  @keyframes pop{0%{transform:scale(0) rotate(-10deg);opacity:0}70%{transform:scale(1.12) rotate(2deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+  .card-in{animation:cardIn .5s ease both;}
+  @keyframes cardIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+  @media (prefers-reduced-motion: reduce){.badge-pop,.card-in{animation:none !important;}}
+  .toolbtn{width:52px;height:52px;display:flex;align-items:center;justify-content:center;}
+  .toolbtn svg{width:24px;height:24px;}
+  ::-webkit-scrollbar{display:none;}
+  #timer-float{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:55;pointer-events:none;margin-top:-8px;}
+</style>
 </head>
 <body>
 
-    <!-- Elemen Video untuk Kamera -->
-    <video id="camera-feed" autoplay playsinline muted></video>
+<video id="camera-feed" autoplay playsinline muted></video>
+<div class="vignette-top"></div>
+<div class="vignette-bottom"></div>
 
-    <!-- Layar Utama (UI) -->
-    <div id="ui-layer">
-        
-        <!-- Layar Mulai / Start Screen -->
-        <div id="start-screen" class="flex-1 flex flex-col items-center justify-center bg-black bg-opacity-80 z-50 absolute w-full h-full">
-            <h1 class="text-5xl md:text-7xl font-black mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-                Kuis Gerak Cerdas
-            </h1>
-            <p class="text-xl md:text-2xl mb-12 text-gray-300 max-w-2xl text-center">
-                Berdirilah di sisi layar yang memiliki jawaban benar. Pastikan seluruh siswa sudah siap!
-            </p>
-            <button onclick="requestCameraAndStart()" class="px-12 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-4xl font-bold shadow-lg shadow-blue-500/50 transition transform hover:scale-105">
-                Mulai
-            </button>
-        </div>
+<div id="ui-layer">
 
-        <!-- Pesan Error Custom (Pengganti Alert) -->
-        <div id="error-modal" class="hidden absolute w-full h-full bg-black bg-opacity-90 z-[60] flex items-center justify-center">
-            <div class="bg-gray-800 p-10 rounded-3xl max-w-lg text-center border border-red-500">
-                <svg class="w-20 h-20 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <h2 class="text-3xl font-bold mb-4">Akses Kamera Gagal</h2>
-                <p id="error-text" class="text-lg text-gray-300 mb-8">Mohon izinkan akses kamera di browser Anda untuk memainkan game ini.</p>
-                <button onclick="closeError()" class="px-8 py-3 bg-gray-600 hover:bg-gray-500 rounded-xl text-white font-bold">Tutup</button>
-            </div>
-        </div>
-
-        <!-- Layar Permainan (Game Screen) -->
-        <div id="game-screen" class="hidden flex-1 flex flex-col w-full h-full relative">
-            
-            <div class="absolute top-6 left-6 z-[60] bg-black/60 backdrop-blur-md border border-white/20 text-white px-6 py-2 rounded-2xl shadow-xl">
-                <span class="text-xl font-bold uppercase tracking-widest text-gray-300">Soal</span>
-                <span id="question-counter" class="text-3xl font-black ml-2 text-blue-400">1/5</span>
-            </div>
-
-            <div class="absolute top-6 right-6 z-[60] flex space-x-3">
-                <button onclick="togglePause()" id="btn-pause" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Jeda/Lanjut (Pause)">
-                    ⏸️
-                </button>
-                <button onclick="fastForward()" id="btn-ff" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Percepat (Skip Waktu)">
-                    ⏩
-                </button>
-                <button onclick="toggleFullscreen()" id="btn-fs" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Layar Penuh (Fullscreen)">
-                    ⛶
-                </button>
-            </div>
-
-            <div id="correct-answer-announcement" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[70] bg-black/90 backdrop-blur-lg px-12 py-8 rounded-3xl border-4 border-green-400 shadow-[0_0_50px_rgba(74,222,128,0.6)] text-center transition-opacity duration-300">
-                <h3 class="text-6xl font-black text-white tracking-wide mb-2">Jawaban <span id="correct-letter" class="text-green-400">A</span> Benar!</h3>
-            </div>
-
-            <!-- Bagian Atas: Soal & Timer -->
-            <div class="glass-panel w-full py-6 px-4 text-center shadow-lg relative pt-20 z-[55]">
-                <h2 id="question-text" class="text-3xl md:text-4xl lg:text-5xl font-black mb-4 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-white px-10 leading-snug">
-                    Pertanyaan akan muncul di sini
-                </h2>
-                <div class="inline-flex items-center justify-center w-20 h-20 bg-black/60 border-2 border-white/30 rounded-full shadow-xl">
-                    <span id="timer-text" class="text-4xl font-black text-white drop-shadow-md">30</span>
-                </div>
-            </div>
-
-            <!-- Bagian Bawah: Layar Terbelah Dua (Opsi A & B) -->
-            <div class="flex-1 flex flex-row w-full h-full relative z-[50]">
-                <!-- OPSI A (Sisi Kiri) -->
-                <div id="pane-A" class="split-pane flex-1 relative flex flex-col border-r-2 border-white/20">
-                    <div class="absolute top-6 left-6 bg-orange-600 text-white px-8 py-3 rounded-2xl text-4xl font-black shadow-lg">A</div>
-                    <div class="flex-1 flex items-center justify-center p-12">
-                        <span id="text-A" class="text-4xl md:text-6xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,1)] text-white">Jawaban A</span>
-                    </div>
-                </div>
-
-                <!-- OPSI B (Sisi Kanan) -->
-                <div id="pane-B" class="split-pane flex-1 relative flex flex-col border-l-2 border-white/20">
-                    <div class="absolute top-6 right-6 bg-purple-600 text-white px-8 py-3 rounded-2xl text-4xl font-black shadow-lg">B</div>
-                    <div class="flex-1 flex items-center justify-center p-12">
-                        <span id="text-B" class="text-4xl md:text-6xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,1)] text-white">Jawaban B</span>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
-        
-        <!-- Layar Selesai (End Screen) -->
-        <div id="end-screen" class="hidden flex-1 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50 absolute w-full h-full">
-            <h1 class="text-6xl font-black mb-6 text-green-400">Permainan Selesai!</h1>
-            <p class="text-2xl text-white mb-8">Kerja bagus semuanya.</p>
-            <button onclick="resetGame()" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-full text-xl font-bold">Main Lagi</button>
-        </div>
-
+  <!-- START -->
+  <div id="start-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center text-center px-6" style="background:radial-gradient(ellipse at 50% 30%, #16213A 0%, #0B1220 70%);">
+    <span class="inline-block px-5 py-2 rounded-full mb-6" style="background:rgba(253,203,58,.15); color:var(--gold); font-weight:700; letter-spacing:.02em;">Kuis Gerak &middot; Kelas Aktif</span>
+    <h1 class="display text-6xl md:text-8xl font-bold mb-6" style="color:var(--coral);">Kuis Gerak Cerdas</h1>
+    <p class="text-xl md:text-2xl text-gray-300 max-w-2xl mb-4">Dengarkan pertanyaannya, lalu berlari ke sisi layar yang menurutmu benar.</p>
+    <div class="flex items-center gap-6 text-lg text-gray-400 mb-8">
+      <span class="flex items-center gap-2"><span class="w-4 h-4 rounded-full" style="background:var(--coral);"></span>Sisi A</span>
+      <span class="flex items-center gap-2"><span class="w-4 h-4 rounded-full" style="background:var(--teal);"></span>Sisi B</span>
     </div>
 
-    <script>
-        // --- KONFIGURASI GAME ---
-        const WAKTU_PER_SOAL = 30; // 30 detik
+    <!-- Pilihan Durasi Waktu -->
+    <div class="flex items-center gap-3 mb-10 bg-white/5 border border-white/10 px-6 py-3 rounded-2xl backdrop-blur-sm">
+      <span class="text-gray-300 font-semibold text-lg mr-2">Waktu per Soal:</span>
+      <button type="button" id="btn-opt-15" onclick="setDurasi(15)" class="px-5 py-2 rounded-xl text-lg font-bold border border-white/20 text-gray-400 hover:text-white transition">15 Detik</button>
+      <button type="button" id="btn-opt-30" onclick="setDurasi(30)" class="px-5 py-2 rounded-xl text-lg font-bold border-2 border-[var(--gold)] bg-[var(--gold)] text-gray-900 shadow-md transition">30 Detik</button>
+    </div>
 
-        // Daftar Soal (Bisa ditambah atau diubah sesuka hati)
-        const daftarSoal = [
-            { 
-                pertanyaan: "Gunung tertinggi di Indonesia adalah?", 
-                opsiA: "Puncak Jaya", 
-                opsiB: "Gunung Kerinci", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Benua terbesar di dunia adalah?", 
-                opsiA: "Afrika", 
-                opsiB: "Asia", 
-                jawabanBenar: "B" 
-            },
-            { 
-                pertanyaan: "Candi Borobudur secara administratif terletak di provinsi?", 
-                opsiA: "Jawa Tengah", 
-                opsiB: "DI Yogyakarta", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Mata uang negara Jepang adalah?", 
-                opsiA: "Won", 
-                opsiB: "Yen", 
-                jawabanBenar: "B" 
-            },
-            { 
-                pertanyaan: "Sumpah Pemuda diikrarkan pada tahun?", 
-                opsiA: "1928", 
-                opsiB: "1945", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Ibukota dari negara Australia adalah?", 
-                opsiA: "Sydney", 
-                opsiB: "Canberra", 
-                jawabanBenar: "B" 
-            },
-            { 
-                pertanyaan: "Sungai terpanjang di Indonesia adalah?", 
-                opsiA: "Sungai Kapuas", 
-                opsiB: "Sungai Musi", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Organisasi ASEAN didirikan di kota?", 
-                opsiA: "Jakarta", 
-                opsiB: "Bangkok", 
-                jawabanBenar: "B" 
-            },
-            { 
-                pertanyaan: "Pahlawan nasional yang mendapat julukan Bapak Pendidikan Nasional adalah?", 
-                opsiA: "Ki Hajar Dewantara", 
-                opsiB: "Budi Utomo", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Benua yang sering dijuluki sebagai 'Benua Biru' adalah?", 
-                opsiA: "Eropa", 
-                opsiB: "Amerika", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Julukan Pulau Dewata merujuk pada pulau?", 
-                opsiA: "Lombok", 
-                opsiB: "Bali", 
-                jawabanBenar: "B" 
-            },
-            { 
-                pertanyaan: "Indonesia diapit oleh dua samudra, yaitu Samudra Hindia dan?", 
-                opsiA: "Samudra Pasifik", 
-                opsiB: "Samudra Atlantik", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Markas besar Perserikatan Bangsa-Bangsa (PBB) terletak di kota?", 
-                opsiA: "London", 
-                opsiB: "New York", 
-                jawabanBenar: "B" 
-            },
-            { 
-                pertanyaan: "Kerajaan Hindu tertua di Indonesia adalah?", 
-                opsiA: "Kerajaan Kutai", 
-                opsiB: "Kerajaan Tarumanegara", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Provinsi maluku masuk dalam zona waktu", 
-                opsiA: "WIT", 
-                opsiB: "WITA", 
-                jawabanBenar: "A" 
-            },
-            { 
-                pertanyaan: "Negara terkecil di dunia berdasarkan luas wilayahnya adalah?", 
-                opsiA: "Monako", 
-                opsiB: "Vatikan", 
-                jawabanBenar: "B" 
-            },
-            { 
-                pertanyaan: "yang tidak termasuk komponen peta adalah ?", 
-                opsiA: "Skala", 
-                opsiB: "Tensimeter", 
-                jawabanBenar: "A" 
-            }
-        ];
+    <button onclick="requestCameraAndStart()" class="px-14 py-5 rounded-full text-3xl font-bold text-white transition transform hover:scale-105" style="background:var(--coral); font-family:'Fredoka',sans-serif; box-shadow:0 10px 40px rgba(255,107,74,.4);">
+      Mulai Permainan
+    </button>
+  </div>
 
-        // --- VARIABEL STATE ---
-        let soalSaatIniIndex = 0;
-        let sisaWaktu = WAKTU_PER_SOAL;
-        let timerInterval;
-        let isPaused = false; // Variabel baru untuk fitur Jeda (Pause)
+  <!-- ERROR MODAL -->
+  <div id="error-modal" class="hidden absolute inset-0 z-[60] flex items-center justify-center px-6" style="background:rgba(11,18,32,.95);">
+    <div class="rounded-3xl p-10 max-w-lg text-center" style="background:#16213A; border:1px solid rgba(239,68,68,.4);">
+      <svg class="w-16 h-16 mx-auto mb-4" style="color:var(--bad);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <h2 class="display text-3xl font-semibold mb-3">Akses Kamera Gagal</h2>
+      <p id="error-text" class="text-gray-300 mb-8">Mohon izinkan akses kamera di browser Anda untuk memainkan game ini.</p>
+      <button onclick="closeError()" class="px-8 py-3 rounded-xl font-semibold" style="background:#2A3752;">Tutup</button>
+    </div>
+  </div>
 
-        // --- FUNGSI KAMERA & MULAI ---
-        async function requestCameraAndStart() {
-            try {
-                // Meminta akses video (Kamera depan/webcam)
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
-                const videoElement = document.getElementById('camera-feed');
-                videoElement.srcObject = stream;
-                
-                // Menyembunyikan layar mulai dan menampilkan layar game
-                document.getElementById('start-screen').classList.add('hidden');
-                document.getElementById('game-screen').classList.remove('hidden');
-                
-                // Mulai ronde pertama
-                mulaiRonde(soalSaatIniIndex);
-            } catch (error) {
-                console.error("Gagal mengakses kamera:", error);
-                tampilkanError("Tidak dapat mengakses kamera. Pastikan browser memiliki izin (permission) untuk menggunakan kamera.");
-            }
-        }
+  <!-- GAME -->
+  <div id="game-screen" class="hidden flex-1 flex flex-col relative">
 
-        // --- FUNGSI LOGIKA PERMAINAN ---
-        function mulaiRonde(index) {
-            // Reset UI dari ronde sebelumnya
-            document.getElementById('pane-A').classList.remove('bg-correct', 'bg-incorrect');
-            document.getElementById('pane-B').classList.remove('bg-correct', 'bg-incorrect');
-            
-            isPaused = false;
-            document.getElementById('btn-pause').innerText = "⏸️"; // Kembalikan ikon pause
-            document.getElementById('question-counter').innerText = `${index + 1}/${daftarSoal.length}`;
-            document.getElementById('correct-answer-announcement').classList.add('hidden'); // Sembunyikan popup jawaban
+    <!-- top toolbar row -->
+    <div class="absolute top-5 left-5 right-5 z-[60] flex items-start justify-between">
+      <div class="rounded-2xl px-5 py-2.5 flex items-center gap-3" style="background:rgba(11,18,32,.65); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.1);">
+        <span id="question-counter" class="display text-2xl font-semibold" style="color:var(--gold);">1 / 5</span>
+      </div>
+      <div class="rounded-2xl flex gap-1 p-1" style="background:rgba(11,18,32,.65); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.1);">
+        <button onclick="togglePause()" id="btn-pause" class="toolbtn rounded-xl hover:bg-white/10 transition" title="Jeda / Lanjut">
+          <svg id="icon-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          <svg id="icon-play" class="hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button onclick="fastForward()" id="btn-ff" class="toolbtn rounded-xl hover:bg-white/10 transition" title="Tampilkan Jawaban Sekarang">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5v14l9-7zM14 5v14l9-7z"/></svg>
+        </button>
+        <button onclick="toggleFullscreen()" class="toolbtn rounded-xl hover:bg-white/10 transition" title="Layar Penuh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg>
+        </button>
+      </div>
+    </div>
 
-            const soal = daftarSoal[index];
-            
-            // Tampilkan teks ke layar
-            document.getElementById('question-text').innerText = soal.pertanyaan;
-            document.getElementById('text-A').innerText = soal.opsiA;
-            document.getElementById('text-B').innerText = soal.opsiB;
-            
-            // Mulai Timer
-            sisaWaktu = WAKTU_PER_SOAL;
-            document.getElementById('timer-text').innerText = sisaWaktu;
-            document.getElementById('timer-text').parentElement.classList.remove('hidden');
-            
-            timerInterval = setInterval(updateTimer, 1000);
-        }
+    <!-- toast on reveal — muncul di bawah card soal pada sisi jawaban benar (posisi diset via JS) -->
+    <div id="reveal-toast" class="hidden absolute z-[65] card-in" style="transform:translateX(-50%);white-space:nowrap;">
+      <div class="flex items-center gap-3 rounded-full pl-3 pr-6 py-2" style="background:rgba(11,18,32,.85); border:1px solid rgba(253,203,58,.5);">
+        <span id="toast-icon" class="w-9 h-9 rounded-full flex items-center justify-center" style="background:var(--ok);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        </span>
+        <span class="display text-xl font-semibold">Jawaban benar: <span id="correct-letter">A</span></span>
+      </div>
+    </div>
 
-        function updateTimer() {
-            if (isPaused) return; 
+    <!-- question card — lebih ke atas -->
+    <div id="card-wrap" class="w-full flex flex-col items-center pt-20 px-6 z-[55] relative">
+      <div id="question-card" class="max-w-4xl w-full rounded-3xl px-8 py-6 text-center card-in" style="background:rgba(11,18,32,.35); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.08);">
+        <h2 id="question-text" class="display text-3xl md:text-4xl lg:text-5xl font-semibold leading-snug">Pertanyaan akan muncul di sini</h2>
+      </div>
+    </div>
 
-            sisaWaktu--;
-            document.getElementById('timer-text').innerText = sisaWaktu;
-            
-            // Tambahkan efek visual berkedip jika waktu < 5 detik (Opsional)
-            if(sisaWaktu <= 5) {
-                document.getElementById('timer-text').parentElement.classList.add('text-red-600');
-            } else {
-                document.getElementById('timer-text').parentElement.classList.remove('text-red-600');
-            }
+    <!-- split panes -->
+    <div class="flex-1 flex flex-row w-full relative z-[50]">
+      <div class="pane-divider"></div>
 
-            if (sisaWaktu <= 0) {
-                clearInterval(timerInterval);
-                evaluasiJawaban();
-            }
-        }
+      <!-- timer mengambang tepat di atas garis vertikal kuning -->
+      <div id="timer-float">
+        <div class="relative flex items-center justify-center" style="width:84px;height:84px;">
+          <svg width="84" height="84" viewBox="0 0 96 96" class="-rotate-90">
+            <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="8"/>
+            <circle id="ring" cx="48" cy="48" r="42" fill="none" stroke="var(--gold)" stroke-width="8" stroke-linecap="round"/>
+          </svg>
+          <span id="timer-text" class="absolute display text-2xl font-semibold">30</span>
+        </div>
+      </div>
 
-        function evaluasiJawaban() {
-            // Sembunyikan timer saat evaluasi
-            document.getElementById('timer-text').parentElement.classList.add('hidden');
-            
-            const soal = daftarSoal[soalSaatIniIndex];
-            const paneA = document.getElementById('pane-A');
-            const paneB = document.getElementById('pane-B');
+      <div id="pane-A" class="pane pane-a-idle flex-1 relative flex flex-col items-center justify-center gap-6 p-10">
+        <div class="absolute top-6 left-6 w-14 h-14 rounded-2xl flex items-center justify-center display text-3xl font-bold" style="background:var(--coral);">A</div>
+        <span id="text-A" class="display text-4xl md:text-6xl font-semibold text-center" style="text-shadow:0 4px 16px rgba(0,0,0,.7);">Jawaban A</span>
+        <div id="badge-A" class="hidden w-24 h-24 rounded-full items-center justify-center badge-pop"></div>
+      </div>
+      <div id="pane-B" class="pane pane-b-idle flex-1 relative flex flex-col items-center justify-center gap-6 p-10">
+        <div class="absolute top-6 right-6 w-14 h-14 rounded-2xl flex items-center justify-center display text-3xl font-bold" style="background:var(--teal);">B</div>
+        <span id="text-B" class="display text-4xl md:text-6xl font-semibold text-center" style="text-shadow:0 4px 16px rgba(0,0,0,.7);">Jawaban B</span>
+        <div id="badge-B" class="hidden w-24 h-24 rounded-full items-center justify-center badge-pop"></div>
+      </div>
+    </div>
+  </div>
 
-            // Beri warna biru untuk sisi yang benar, merah untuk yang salah
-            if (soal.jawabanBenar === "A") {
-                paneA.classList.add('bg-correct');
-                paneB.classList.add('bg-incorrect');
-            } else {
-                paneA.classList.add('bg-incorrect');
-                paneB.classList.add('bg-correct');
-            }
+  <!-- END -->
+  <div id="end-screen" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center text-center px-6" style="background:radial-gradient(ellipse at 50% 30%, #16213A 0%, #0B1220 70%);">
+    <div class="w-24 h-24 rounded-full flex items-center justify-center mb-6" style="background:var(--ok);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="w-12 h-12"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+    </div>
+    <h1 class="display text-5xl md:text-6xl font-bold mb-4">Permainan Selesai!</h1>
+    <p class="text-xl text-gray-300 mb-10">Kerja bagus semuanya. Sampai jumpa di kuis berikutnya.</p>
+    <button onclick="resetGame()" class="px-10 py-4 rounded-full text-xl font-bold" style="background:var(--coral); font-family:'Fredoka',sans-serif;">Main Lagi</button>
+  </div>
 
-            document.getElementById('correct-letter').innerText = soal.jawabanBenar;
-            document.getElementById('correct-answer-announcement').classList.remove('hidden');
+</div>
 
-            // Tahan layar warna selama 5 detik agar siswa bisa melihat hasilnya
-            setTimeout(() => {
-                soalSaatIniIndex++;
-                if (soalSaatIniIndex < daftarSoal.length) {
-                    mulaiRonde(soalSaatIniIndex);
-                } else {
-                    akhiriPermainan();
-                }
-            }, 5000); // Tahan 5 detik sebelum lanjut
-        }
+<script>
+let waktuPerSoal = 30;
+const CIRC = 2 * Math.PI * 42;
 
-        function akhiriPermainan() {
-            document.getElementById('game-screen').classList.add('hidden');
-            document.getElementById('end-screen').classList.remove('hidden');
-        }
+const daftarSoal = [
+  { pertanyaan:"Gunung tertinggi di Indonesia adalah?", opsiA:"Puncak Jaya", opsiB:"Gunung Kerinci", jawabanBenar:"A" },
+  { pertanyaan:"Benua terbesar di dunia adalah?", opsiA:"Afrika", opsiB:"Asia", jawabanBenar:"B" },
+  { pertanyaan:"Candi Borobudur secara administratif terletak di provinsi?", opsiA:"Jawa Tengah", opsiB:"DI Yogyakarta", jawabanBenar:"A" },
+  { pertanyaan:"Mata uang negara Jepang adalah?", opsiA:"Won", opsiB:"Yen", jawabanBenar:"B" },
+  { pertanyaan:"Sumpah Pemuda diikrarkan pada tahun?", opsiA:"1928", opsiB:"1945", jawabanBenar:"A" },
+  { pertanyaan:"Ibukota dari negara Australia adalah?", opsiA:"Sydney", opsiB:"Canberra", jawabanBenar:"B" },
+  { pertanyaan:"Sungai terpanjang di Indonesia adalah?", opsiA:"Sungai Kapuas", opsiB:"Sungai Musi", jawabanBenar:"A" },
+  { pertanyaan:"Organisasi ASEAN didirikan di kota?", opsiA:"Jakarta", opsiB:"Bangkok", jawabanBenar:"B" },
+  { pertanyaan:"Pahlawan nasional yang mendapat julukan Bapak Pendidikan Nasional adalah?", opsiA:"Ki Hajar Dewantara", opsiB:"Budi Utomo", jawabanBenar:"A" },
+  { pertanyaan:"Benua yang sering dijuluki sebagai 'Benua Biru' adalah?", opsiA:"Eropa", opsiB:"Amerika", jawabanBenar:"A" },
+  { pertanyaan:"Julukan Pulau Dewata merujuk pada pulau?", opsiA:"Lombok", opsiB:"Bali", jawabanBenar:"B" },
+  { pertanyaan:"Indonesia diapit oleh dua samudra, yaitu Samudra Hindia dan?", opsiA:"Samudra Pasifik", opsiB:"Samudra Atlantik", jawabanBenar:"A" },
+  { pertanyaan:"Markas besar Perserikatan Bangsa-Bangsa (PBB) terletak di kota?", opsiA:"London", opsiB:"New York", jawabanBenar:"B" },
+  { pertanyaan:"Kerajaan Hindu tertua di Indonesia adalah?", opsiA:"Kerajaan Kutai", opsiB:"Kerajaan Tarumanegara", jawabanBenar:"A" },
+  { pertanyaan:"Provinsi Maluku masuk dalam zona waktu", opsiA:"WIT", opsiB:"WITA", jawabanBenar:"A" },
+  { pertanyaan:"Negara terkecil di dunia berdasarkan luas wilayahnya adalah?", opsiA:"Monako", opsiB:"Vatikan", jawabanBenar:"B" },
+  { pertanyaan:"Yang tidak termasuk komponen peta adalah?", opsiA:"Skala", opsiB:"Tensimeter", jawabanBenar:"B" }
+];
 
-        function resetGame() {
-            soalSaatIniIndex = 0;
-            document.getElementById('end-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            mulaiRonde(soalSaatIniIndex);
-        }
+let idx = 0, sisaWaktu = waktuPerSoal, timerInterval, transitionInterval = null, sisaTransisi = 5;
+let isPaused = false, roundEnded = false;
 
-        // --- FUNGSI KONTROL TAMBAHAN ---
-        function togglePause() {
-            if (sisaWaktu > 0 && document.getElementById('timer-text').parentElement.classList.contains('hidden') === false) {
-                isPaused = !isPaused;
-                document.getElementById('btn-pause').innerText = isPaused ? "▶️" : "⏸️";
-            }
-        }
+// Singleton AudioContext untuk mencegah memory leak
+let audioCtx = null;
+function getAudioContext(){
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(()=>{});
+  }
+  return audioCtx;
+}
 
-        function fastForward() {
-            // Hanya berlaku jika waktu belum habis
-            if (sisaWaktu > 0 && document.getElementById('timer-text').parentElement.classList.contains('hidden') === false) {
-                sisaWaktu = 1; // Ubah waktu jadi 1 detik agar di interval berikutnya langsung selesai
-                if (isPaused) {
-                    togglePause(); // Pastikan tidak dalam status pause agar interval tetap berjalan
-                }
-            }
-        }
+// Chime untuk momen pengumuman jawaban
+function playChime(ok){
+  try{
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = ok ? 880 : 220;
+    g.gain.setValueAtTime(0.18, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.4);
+  }catch(e){}
+}
 
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.warn(`Gagal masuk ke mode Fullscreen: ${err.message}`);
-                });
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
-        }
+// Suara detak countdown di 5 detik terakhir
+function playTick(isUrgent){
+  try{
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = isUrgent ? 'triangle' : 'sine';
+    o.frequency.setValueAtTime(isUrgent ? 880 : 587, ctx.currentTime);
+    g.gain.setValueAtTime(0.1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.08);
+  }catch(e){}
+}
 
-        // --- FUNGSI ERROR HANDLING ---
-        function tampilkanError(pesan) {
-            document.getElementById('error-text').innerText = pesan;
-            document.getElementById('error-modal').classList.remove('hidden');
-        }
+// Pilihan durasi sebelum mulai
+function setDurasi(detik){
+  waktuPerSoal = detik;
+  const btn15 = document.getElementById('btn-opt-15');
+  const btn30 = document.getElementById('btn-opt-30');
+  if (detik === 15) {
+    btn15.className = 'px-5 py-2 rounded-xl text-lg font-bold border-2 border-[var(--gold)] bg-[var(--gold)] text-gray-900 shadow-md transition';
+    btn30.className = 'px-5 py-2 rounded-xl text-lg font-bold border border-white/20 text-gray-400 hover:text-white transition';
+  } else {
+    btn30.className = 'px-5 py-2 rounded-xl text-lg font-bold border-2 border-[var(--gold)] bg-[var(--gold)] text-gray-900 shadow-md transition';
+    btn15.className = 'px-5 py-2 rounded-xl text-lg font-bold border border-white/20 text-gray-400 hover:text-white transition';
+  }
+}
 
-        function closeError() {
-            document.getElementById('error-modal').classList.add('hidden');
-        }
-    </script>
+// Acak urutan soal (Fisher-Yates)
+function shuffleSoal(){
+  for (let i = daftarSoal.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [daftarSoal[i], daftarSoal[j]] = [daftarSoal[j], daftarSoal[i]];
+  }
+}
+
+async function requestCameraAndStart(){
+  getAudioContext(); // inisialisasi context saat interaksi pengguna
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:{ideal:1920}, height:{ideal:1080} } });
+    document.getElementById('camera-feed').srcObject = stream;
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+    mulaiRonde(idx);
+  }catch(err){
+    console.error(err);
+    tampilkanError("Tidak dapat mengakses kamera. Pastikan browser memiliki izin untuk menggunakan kamera.");
+  }
+}
+
+function mulaiRonde(i){
+  roundEnded = false;
+  clearInterval(transitionInterval);
+  transitionInterval = null;
+
+  ['A','B'].forEach(k=>{
+    const p = document.getElementById('pane-'+k);
+    p.classList.remove('pane-correct','pane-wrong');
+    p.classList.add(k==='A'?'pane-a-idle':'pane-b-idle');
+    document.getElementById('badge-'+k).classList.add('hidden');
+  });
+  isPaused = false;
+  document.getElementById('icon-pause').classList.remove('hidden');
+  document.getElementById('icon-play').classList.add('hidden');
+  document.getElementById('reveal-toast').classList.add('hidden');
+  document.getElementById('question-counter').innerText = `${i+1} / ${daftarSoal.length}`;
+
+  const soal = daftarSoal[i];
+  document.getElementById('question-text').innerText = soal.pertanyaan;
+  document.getElementById('text-A').innerText = soal.opsiA;
+  document.getElementById('text-B').innerText = soal.opsiB;
+
+  sisaWaktu = waktuPerSoal;
+  updateRing();
+  document.getElementById('timer-text').innerText = sisaWaktu;
+  document.getElementById('timer-text').style.color = '';
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function updateRing(){
+  const ring = document.getElementById('ring');
+  ring.style.strokeDasharray = CIRC;
+  ring.style.strokeDashoffset = CIRC * (1 - sisaWaktu / waktuPerSoal);
+}
+
+function updateTimer(){
+  if (isPaused) return;
+  sisaWaktu--;
+  document.getElementById('timer-text').innerText = Math.max(sisaWaktu,0);
+  updateRing();
+  document.getElementById('timer-text').style.color = sisaWaktu <= 5 ? 'var(--bad)' : '';
+  
+  // Bunyikan detak jika sisa 5 detik ke bawah
+  if (sisaWaktu <= 5 && sisaWaktu > 0) {
+    playTick(sisaWaktu <= 2);
+  }
+
+  if (sisaWaktu <= 0) evaluasiJawaban();
+}
+
+function positionToast(correct){
+  const card = document.getElementById('question-card');
+  const rect = card.getBoundingClientRect();
+  const toast = document.getElementById('reveal-toast');
+  toast.style.top = (rect.bottom + 14) + 'px';
+  toast.style.left = (correct === 'A') ? '25%' : '75%';
+}
+
+function evaluasiJawaban(){
+  if (roundEnded) return;
+  roundEnded = true;
+  clearInterval(timerInterval);
+
+  const soal = daftarSoal[idx];
+  const correct = soal.jawabanBenar;
+  const wrong = correct === 'A' ? 'B' : 'A';
+
+  const pCorrect = document.getElementById('pane-'+correct);
+  const pWrong = document.getElementById('pane-'+wrong);
+  pCorrect.classList.remove('pane-a-idle','pane-b-idle');
+  pWrong.classList.remove('pane-a-idle','pane-b-idle');
+  pCorrect.classList.add('pane-correct');
+  pWrong.classList.add('pane-wrong');
+
+  document.getElementById('badge-'+correct).innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="w-12 h-12"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+  document.getElementById('badge-'+correct).style.background = 'var(--ok)';
+  document.getElementById('badge-'+correct).classList.remove('hidden');
+  document.getElementById('badge-'+correct).classList.add('flex');
+
+  document.getElementById('badge-'+wrong).innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="w-10 h-10"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>`;
+  document.getElementById('badge-'+wrong).style.background = 'rgba(255,255,255,.15)';
+  document.getElementById('badge-'+wrong).classList.remove('hidden');
+  document.getElementById('badge-'+wrong).classList.add('flex');
+
+  document.getElementById('correct-letter').innerText = correct;
+  positionToast(correct);
+  document.getElementById('reveal-toast').classList.remove('hidden');
+  playChime(true);
+
+  // Transisi 5 detik yang bisa dijeda (pause) oleh guru
+  sisaTransisi = 5;
+  clearInterval(transitionInterval);
+  transitionInterval = setInterval(()=>{
+    if (isPaused) return;
+    sisaTransisi--;
+    if (sisaTransisi <= 0) {
+      clearInterval(transitionInterval);
+      transitionInterval = null;
+      idx++;
+      if (idx < daftarSoal.length) mulaiRonde(idx);
+      else akhiriPermainan();
+    }
+  }, 1000);
+}
+
+function akhiriPermainan(){
+  clearInterval(timerInterval);
+  clearInterval(transitionInterval);
+  document.getElementById('game-screen').classList.add('hidden');
+  document.getElementById('end-screen').classList.remove('hidden');
+}
+
+function resetGame(){
+  shuffleSoal(); // Acak soal saat main lagi
+  idx = 0;
+  document.getElementById('end-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+  mulaiRonde(idx);
+}
+
+function togglePause(){
+  isPaused = !isPaused;
+  document.getElementById('icon-pause').classList.toggle('hidden', isPaused);
+  document.getElementById('icon-play').classList.toggle('hidden', !isPaused);
+}
+
+function fastForward(){
+  // Jika masih berjalan, langsung evaluasi
+  if (!roundEnded) {
+    evaluasiJawaban();
+  } else {
+    // Jika sedang jeda/tampil jawaban, langsung lompat ke soal berikutnya
+    clearInterval(transitionInterval);
+    transitionInterval = null;
+    idx++;
+    if (idx < daftarSoal.length) mulaiRonde(idx);
+    else akhiriPermainan();
+  }
+}
+
+function toggleFullscreen(){
+  if (!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(e=>console.warn(e.message));
+  } else if (document.exitFullscreen){
+    document.exitFullscreen();
+  }
+}
+
+function tampilkanError(pesan){
+  document.getElementById('error-text').innerText = pesan;
+  document.getElementById('error-modal').classList.remove('hidden');
+}
+function closeError(){
+  document.getElementById('error-modal').classList.add('hidden');
+}
+</script>
 </body>
 </html>
