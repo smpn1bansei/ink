@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game IFP Interaktif</title>
+    <!-- Menggunakan Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000; /* Latar belakang hitam sebelum kamera aktif */
+            color: white;
+        }
+
+        /* Styling untuk feed kamera agar menutupi seluruh layar dan di-mirror */
+        #camera-feed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 1;
+            transform: scaleX(-1); /* Efek cermin agar gerakan siswa terasa natural */
+        }
+
+        /* Container UI utama */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Kotak soal dengan latar belakang sedikit gelap tanpa blur */
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Transisi halus saat warna overlay berubah */
+        .split-pane {
+            transition: background-color 0.5s ease-in-out;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Warna feedback */
+        .bg-correct {
+            background-color: rgba(59, 130, 246, 0.7) !important; /* Biru transparan */
+        }
+        .bg-incorrect {
+            background-color: rgba(239, 68, 68, 0.7) !important; /* Merah transparan */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Elemen Video untuk Kamera -->
+    <video id="camera-feed" autoplay playsinline muted></video>
+
+    <!-- Layar Utama (UI) -->
+    <div id="ui-layer">
+        
+        <!-- Layar Mulai / Start Screen -->
+        <div id="start-screen" class="flex-1 flex flex-col items-center justify-center bg-black bg-opacity-80 z-50 absolute w-full h-full">
+            <h1 class="text-5xl md:text-7xl font-black mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                Kuis Gerak Cerdas
+            </h1>
+            <p class="text-xl md:text-2xl mb-12 text-gray-300 max-w-2xl text-center">
+                Berdirilah di sisi layar yang memiliki jawaban benar. Pastikan seluruh siswa sudah siap!
+            </p>
+            <button onclick="requestCameraAndStart()" class="px-12 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-4xl font-bold shadow-lg shadow-blue-500/50 transition transform hover:scale-105">
+                Mulai
+            </button>
+        </div>
+
+        <!-- Pesan Error Custom (Pengganti Alert) -->
+        <div id="error-modal" class="hidden absolute w-full h-full bg-black bg-opacity-90 z-[60] flex items-center justify-center">
+            <div class="bg-gray-800 p-10 rounded-3xl max-w-lg text-center border border-red-500">
+                <svg class="w-20 h-20 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h2 class="text-3xl font-bold mb-4">Akses Kamera Gagal</h2>
+                <p id="error-text" class="text-lg text-gray-300 mb-8">Mohon izinkan akses kamera di browser Anda untuk memainkan game ini.</p>
+                <button onclick="closeError()" class="px-8 py-3 bg-gray-600 hover:bg-gray-500 rounded-xl text-white font-bold">Tutup</button>
+            </div>
+        </div>
+
+        <!-- Layar Permainan (Game Screen) -->
+        <div id="game-screen" class="hidden flex-1 flex flex-col w-full h-full relative">
+            
+            <div class="absolute top-6 left-6 z-[60] bg-black/60 backdrop-blur-md border border-white/20 text-white px-6 py-2 rounded-2xl shadow-xl">
+                <span class="text-xl font-bold uppercase tracking-widest text-gray-300">Soal</span>
+                <span id="question-counter" class="text-3xl font-black ml-2 text-blue-400">1/5</span>
+            </div>
+
+            <div class="absolute top-6 right-6 z-[60] flex space-x-3">
+                <button onclick="togglePause()" id="btn-pause" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Jeda/Lanjut (Pause)">
+                    ⏸️
+                </button>
+                <button onclick="fastForward()" id="btn-ff" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Percepat (Skip Waktu)">
+                    ⏩
+                </button>
+                <button onclick="toggleFullscreen()" id="btn-fs" class="bg-black/60 hover:bg-gray-800 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-white text-2xl transition-transform hover:scale-105 shadow-xl" title="Layar Penuh (Fullscreen)">
+                    ⛶
+                </button>
+            </div>
+
+            <div id="correct-answer-announcement" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[70] bg-black/90 backdrop-blur-lg px-12 py-8 rounded-3xl border-4 border-green-400 shadow-[0_0_50px_rgba(74,222,128,0.6)] text-center transition-opacity duration-300">
+                <h3 class="text-6xl font-black text-white tracking-wide mb-2">Jawaban <span id="correct-letter" class="text-green-400">A</span> Benar!</h3>
+            </div>
+
+            <!-- Bagian Atas: Soal & Timer -->
+            <div class="glass-panel w-full py-6 px-4 text-center shadow-lg relative pt-20 z-[55]">
+                <h2 id="question-text" class="text-3xl md:text-4xl lg:text-5xl font-black mb-4 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] text-white px-10 leading-snug">
+                    Pertanyaan akan muncul di sini
+                </h2>
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-black/60 border-2 border-white/30 rounded-full shadow-xl">
+                    <span id="timer-text" class="text-4xl font-black text-white drop-shadow-md">30</span>
+                </div>
+            </div>
+
+            <!-- Bagian Bawah: Layar Terbelah Dua (Opsi A & B) -->
+            <div class="flex-1 flex flex-row w-full h-full relative z-[50]">
+                <!-- OPSI A (Sisi Kiri) -->
+                <div id="pane-A" class="split-pane flex-1 relative flex flex-col border-r-2 border-white/20">
+                    <div class="absolute top-6 left-6 bg-orange-600 text-white px-8 py-3 rounded-2xl text-4xl font-black shadow-lg">A</div>
+                    <div class="flex-1 flex items-center justify-center p-12">
+                        <span id="text-A" class="text-4xl md:text-6xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,1)] text-white">Jawaban A</span>
+                    </div>
+                </div>
+
+                <!-- OPSI B (Sisi Kanan) -->
+                <div id="pane-B" class="split-pane flex-1 relative flex flex-col border-l-2 border-white/20">
+                    <div class="absolute top-6 right-6 bg-purple-600 text-white px-8 py-3 rounded-2xl text-4xl font-black shadow-lg">B</div>
+                    <div class="flex-1 flex items-center justify-center p-12">
+                        <span id="text-B" class="text-4xl md:text-6xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,1)] text-white">Jawaban B</span>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Layar Selesai (End Screen) -->
+        <div id="end-screen" class="hidden flex-1 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50 absolute w-full h-full">
+            <h1 class="text-6xl font-black mb-6 text-green-400">Permainan Selesai!</h1>
+            <p class="text-2xl text-white mb-8">Kerja bagus semuanya.</p>
+            <button onclick="resetGame()" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-full text-xl font-bold">Main Lagi</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- KONFIGURASI GAME ---
+        const WAKTU_PER_SOAL = 30; // 30 detik
+
+        // Daftar Soal Matematika Sederhana (20 Soal)
+        const daftarSoal = [
+            { 
+                pertanyaan: "Hasil dari 12 + 15 adalah?", 
+                opsiA: "27", 
+                opsiB: "25", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 45 - 18 adalah?", 
+                opsiA: "29", 
+                opsiB: "27", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 8 × 7 adalah?", 
+                opsiA: "56", 
+                opsiB: "54", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 72 ÷ 9 adalah?", 
+                opsiA: "7", 
+                opsiB: "8", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 25 + 34 adalah?", 
+                opsiA: "59", 
+                opsiB: "69", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 100 - 43 adalah?", 
+                opsiA: "67", 
+                opsiB: "57", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 9 × 6 adalah?", 
+                opsiA: "54", 
+                opsiB: "48", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 64 ÷ 8 adalah?", 
+                opsiA: "6", 
+                opsiB: "8", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 15 + 28 adalah?", 
+                opsiA: "43", 
+                opsiB: "41", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 80 - 35 adalah?", 
+                opsiA: "55", 
+                opsiB: "45", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 12 × 4 adalah?", 
+                opsiA: "48", 
+                opsiB: "44", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 50 ÷ 5 adalah?", 
+                opsiA: "12", 
+                opsiB: "10", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 37 + 16 adalah?", 
+                opsiA: "53", 
+                opsiB: "51", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 90 - 27 adalah?", 
+                opsiA: "73", 
+                opsiB: "63", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 7 × 9 adalah?", 
+                opsiA: "63", 
+                opsiB: "61", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 36 ÷ 4 adalah?", 
+                opsiA: "8", 
+                opsiB: "9", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 18 + 27 adalah?", 
+                opsiA: "45", 
+                opsiB: "43", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 75 - 38 adalah?", 
+                opsiA: "47", 
+                opsiB: "37", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Hasil dari 6 × 8 adalah?", 
+                opsiA: "48", 
+                opsiB: "42", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Hasil dari 81 ÷ 9 adalah?", 
+                opsiA: "8", 
+                opsiB: "9", 
+                jawabanBenar: "B" 
+            }
+        ];
+
+        // --- VARIABEL STATE ---
+        let soalSaatIniIndex = 0;
+        let sisaWaktu = WAKTU_PER_SOAL;
+        let timerInterval;
+        let isPaused = false; // Variabel baru untuk fitur Jeda (Pause)
+
+        // --- FUNGSI KAMERA & MULAI ---
+        async function requestCameraAndStart() {
+            try {
+                // Meminta akses video (Kamera depan/webcam)
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
+                const videoElement = document.getElementById('camera-feed');
+                videoElement.srcObject = stream;
+                
+                // Menyembunyikan layar mulai dan menampilkan layar game
+                document.getElementById('start-screen').classList.add('hidden');
+                document.getElementById('game-screen').classList.remove('hidden');
+                
+                // Mulai ronde pertama
+                mulaiRonde(soalSaatIniIndex);
+            } catch (error) {
+                console.error("Gagal mengakses kamera:", error);
+                tampilkanError("Tidak dapat mengakses kamera. Pastikan browser memiliki izin (permission) untuk menggunakan kamera.");
+            }
+        }
+
+        // --- FUNGSI LOGIKA PERMAINAN ---
+        function mulaiRonde(index) {
+            // Reset UI dari ronde sebelumnya
+            document.getElementById('pane-A').classList.remove('bg-correct', 'bg-incorrect');
+            document.getElementById('pane-B').classList.remove('bg-correct', 'bg-incorrect');
+            
+            isPaused = false;
+            document.getElementById('btn-pause').innerText = "⏸️"; // Kembalikan ikon pause
+            document.getElementById('question-counter').innerText = `${index + 1}/${daftarSoal.length}`;
+            document.getElementById('correct-answer-announcement').classList.add('hidden'); // Sembunyikan popup jawaban
+
+            const soal = daftarSoal[index];
+            
+            // Tampilkan teks ke layar
+            document.getElementById('question-text').innerText = soal.pertanyaan;
+            document.getElementById('text-A').innerText = soal.opsiA;
+            document.getElementById('text-B').innerText = soal.opsiB;
+            
+            // Mulai Timer
+            sisaWaktu = WAKTU_PER_SOAL;
+            document.getElementById('timer-text').innerText = sisaWaktu;
+            document.getElementById('timer-text').parentElement.classList.remove('hidden');
+            
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            if (isPaused) return; 
+
+            sisaWaktu--;
+            document.getElementById('timer-text').innerText = sisaWaktu;
+            
+            // Tambahkan efek visual berkedip jika waktu < 5 detik (Opsional)
+            if(sisaWaktu <= 5) {
+                document.getElementById('timer-text').parentElement.classList.add('text-red-600');
+            } else {
+                document.getElementById('timer-text').parentElement.classList.remove('text-red-600');
+            }
+
+            if (sisaWaktu <= 0) {
+                clearInterval(timerInterval);
+                evaluasiJawaban();
+            }
+        }
+
+        function evaluasiJawaban() {
+            // Sembunyikan timer saat evaluasi
+            document.getElementById('timer-text').parentElement.classList.add('hidden');
+            
+            const soal = daftarSoal[soalSaatIniIndex];
+            const paneA = document.getElementById('pane-A');
+            const paneB = document.getElementById('pane-B');
+
+            // Beri warna biru untuk sisi yang benar, merah untuk yang salah
+            if (soal.jawabanBenar === "A") {
+                paneA.classList.add('bg-correct');
+                paneB.classList.add('bg-incorrect');
+            } else {
+                paneA.classList.add('bg-incorrect');
+                paneB.classList.add('bg-correct');
+            }
+
+            document.getElementById('correct-letter').innerText = soal.jawabanBenar;
+            document.getElementById('correct-answer-announcement').classList.remove('hidden');
+
+            // Tahan layar warna selama 5 detik agar siswa bisa melihat hasilnya
+            setTimeout(() => {
+                soalSaatIniIndex++;
+                if (soalSaatIniIndex < daftarSoal.length) {
+                    mulaiRonde(soalSaatIniIndex);
+                } else {
+                    akhiriPermainan();
+                }
+            }, 5000); // Tahan 5 detik sebelum lanjut
+        }
+
+        function akhiriPermainan() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+        }
+
+        function resetGame() {
+            soalSaatIniIndex = 0;
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            mulaiRonde(soalSaatIniIndex);
+        }
+
+        // --- FUNGSI KONTROL TAMBAHAN ---
+        function togglePause() {
+            if (sisaWaktu > 0 && document.getElementById('timer-text').parentElement.classList.contains('hidden') === false) {
+                isPaused = !isPaused;
+                document.getElementById('btn-pause').innerText = isPaused ? "▶️" : "⏸️";
+            }
+        }
+
+        function fastForward() {
+            // Hanya berlaku jika waktu belum habis
+            if (sisaWaktu > 0 && document.getElementById('timer-text').parentElement.classList.contains('hidden') === false) {
+                sisaWaktu = 1; // Ubah waktu jadi 1 detik agar di interval berikutnya langsung selesai
+                if (isPaused) {
+                    togglePause(); // Pastikan tidak dalam status pause agar interval tetap berjalan
+                }
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.warn(`Gagal masuk ke mode Fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // --- FUNGSI ERROR HANDLING ---
+        function tampilkanError(pesan) {
+            document.getElementById('error-text').innerText = pesan;
+            document.getElementById('error-modal').classList.remove('hidden');
+        }
+
+        function closeError() {
+            document.getElementById('error-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
