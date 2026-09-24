@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game IFP Interaktif</title>
+    <!-- Menggunakan Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000; /* Latar belakang hitam sebelum kamera aktif */
+            color: white;
+        }
+
+        /* Styling untuk feed kamera agar menutupi seluruh layar dan di-mirror */
+        #camera-feed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 1;
+            transform: scaleX(-1); /* Efek cermin agar gerakan siswa terasa natural */
+        }
+
+        /* Container UI utama */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Efek kaca (Glassmorphism) untuk kotak soal */
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Transisi halus saat warna overlay berubah */
+        .split-pane {
+            transition: background-color 0.5s ease-in-out;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Warna feedback */
+        .bg-correct {
+            background-color: rgba(59, 130, 246, 0.7) !important; /* Biru transparan */
+        }
+        .bg-incorrect {
+            background-color: rgba(239, 68, 68, 0.7) !important; /* Merah transparan */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Elemen Video untuk Kamera -->
+    <video id="camera-feed" autoplay playsinline muted></video>
+
+    <!-- Layar Utama (UI) -->
+    <div id="ui-layer">
+        
+        <!-- Layar Mulai / Start Screen -->
+        <div id="start-screen" class="flex-1 flex flex-col items-center justify-center bg-black bg-opacity-80 z-50 absolute w-full h-full">
+            <h1 class="text-5xl md:text-7xl font-black mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                Kuis Gerak Cerdas
+            </h1>
+            <p class="text-xl md:text-2xl mb-12 text-gray-300 max-w-2xl text-center">
+                Berdirilah di sisi layar yang memiliki jawaban benar. Pastikan seluruh siswa sudah siap!
+            </p>
+            <button onclick="requestCameraAndStart()" class="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-3xl font-bold shadow-lg shadow-blue-500/50 transition transform hover:scale-105">
+                Mulai Permainan
+            </button>
+        </div>
+
+        <!-- Pesan Error Custom (Pengganti Alert) -->
+        <div id="error-modal" class="hidden absolute w-full h-full bg-black bg-opacity-90 z-[60] flex items-center justify-center">
+            <div class="bg-gray-800 p-10 rounded-3xl max-w-lg text-center border border-red-500">
+                <svg class="w-20 h-20 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h2 class="text-3xl font-bold mb-4">Akses Kamera Gagal</h2>
+                <p id="error-text" class="text-lg text-gray-300 mb-8">Mohon izinkan akses kamera di browser Anda untuk memainkan game ini.</p>
+                <button onclick="closeError()" class="px-8 py-3 bg-gray-600 hover:bg-gray-500 rounded-xl text-white font-bold">Tutup</button>
+            </div>
+        </div>
+
+        <!-- Layar Permainan (Game Screen) -->
+        <div id="game-screen" class="hidden flex-1 flex flex-col w-full h-full">
+            
+            <!-- Bagian Atas: Soal -->
+            <div class="glass-panel w-full py-8 px-4 text-center shadow-lg relative">
+                <h2 id="question-text" class="text-4xl md:text-6xl font-black text-white drop-shadow-md">
+                    Memuat pertanyaan...
+                </h2>
+                
+                <!-- Timer di tengah bawah kotak soal -->
+                <div class="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black text-5xl font-black w-24 h-24 rounded-full flex items-center justify-center shadow-2xl border-4 border-gray-200">
+                    <span id="timer-text">30</span>
+                </div>
+            </div>
+
+            <!-- Bagian Bawah: Opsi Jawaban (Terbagi Kiri dan Kanan) -->
+            <div class="flex-1 flex flex-row w-full mt-12">
+                <!-- Sisi Kiri (Opsi A) -->
+                <div id="pane-A" class="split-pane flex-1 border-r border-dashed border-white/30 relative flex flex-col">
+                    <div class="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-xl text-2xl font-bold shadow-md">Opsi A</div>
+                    <div class="flex-1 flex items-center justify-center p-8">
+                        <span id="text-A" class="text-5xl md:text-7xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">Jawaban A</span>
+                    </div>
+                </div>
+
+                <!-- Sisi Kanan (Opsi B) -->
+                <div id="pane-B" class="split-pane flex-1 relative flex flex-col">
+                    <div class="absolute top-4 right-4 bg-purple-600 text-white px-4 py-2 rounded-xl text-2xl font-bold shadow-md">Opsi B</div>
+                    <div class="flex-1 flex items-center justify-center p-8">
+                        <span id="text-B" class="text-5xl md:text-7xl font-bold text-center drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">Jawaban B</span>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Layar Selesai (End Screen) -->
+        <div id="end-screen" class="hidden flex-1 flex flex-col items-center justify-center bg-black bg-opacity-90 z-50 absolute w-full h-full">
+            <h1 class="text-6xl font-black mb-6 text-green-400">Permainan Selesai!</h1>
+            <p class="text-2xl text-white mb-8">Kerja bagus semuanya.</p>
+            <button onclick="resetGame()" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-full text-xl font-bold">Main Lagi</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- KONFIGURASI GAME ---
+        const WAKTU_PER_SOAL = 30; // 30 detik
+
+        // Daftar Soal (Bisa ditambah atau diubah sesuka hati)
+        const daftarSoal = [
+            { 
+                pertanyaan: "Binatang apa yang bernapas menggunakan insang?", 
+                opsiA: "Paus", 
+                opsiB: "Hiu", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Ibukota negara Indonesia pada tahun 2026 adalah?", 
+                opsiA: "Nusantara", 
+                opsiB: "Jakarta", 
+                jawabanBenar: "A" 
+            },
+            { 
+                pertanyaan: "Berapa hasil dari 5 + 3 x 2?", 
+                opsiA: "11", 
+                opsiB: "16", 
+                jawabanBenar: "A" // (Perkalian dikerjakan lebih dulu: 3x2=6, lalu 5+6=11)
+            },
+            { 
+                pertanyaan: "Candi Borobudur terletak di provinsi mana?", 
+                opsiA: "Jawa Timur", 
+                opsiB: "Jawa Tengah", 
+                jawabanBenar: "B" 
+            },
+            { 
+                pertanyaan: "Warna yang melambangkan keberanian pada bendera kita adalah?", 
+                opsiA: "Merah", 
+                opsiB: "Putih", 
+                jawabanBenar: "A" 
+            }
+        ];
+
+        // --- VARIABEL STATE ---
+        let soalSaatIniIndex = 0;
+        let sisaWaktu = WAKTU_PER_SOAL;
+        let timerInterval;
+
+        // --- FUNGSI KAMERA & MULAI ---
+        async function requestCameraAndStart() {
+            try {
+                // Meminta akses video (Kamera depan/webcam)
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
+                const videoElement = document.getElementById('camera-feed');
+                videoElement.srcObject = stream;
+                
+                // Menyembunyikan layar mulai dan menampilkan layar game
+                document.getElementById('start-screen').classList.add('hidden');
+                document.getElementById('game-screen').classList.remove('hidden');
+                
+                // Mulai ronde pertama
+                mulaiRonde(soalSaatIniIndex);
+            } catch (error) {
+                console.error("Gagal mengakses kamera:", error);
+                tampilkanError("Tidak dapat mengakses kamera. Pastikan browser memiliki izin (permission) untuk menggunakan kamera.");
+            }
+        }
+
+        // --- FUNGSI LOGIKA PERMAINAN ---
+        function mulaiRonde(index) {
+            // Reset UI dari ronde sebelumnya
+            document.getElementById('pane-A').classList.remove('bg-correct', 'bg-incorrect');
+            document.getElementById('pane-B').classList.remove('bg-correct', 'bg-incorrect');
+            
+            const soal = daftarSoal[index];
+            
+            // Tampilkan teks ke layar
+            document.getElementById('question-text').innerText = soal.pertanyaan;
+            document.getElementById('text-A').innerText = soal.opsiA;
+            document.getElementById('text-B').innerText = soal.opsiB;
+            
+            // Mulai Timer
+            sisaWaktu = WAKTU_PER_SOAL;
+            document.getElementById('timer-text').innerText = sisaWaktu;
+            document.getElementById('timer-text').parentElement.classList.remove('hidden');
+            
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            sisaWaktu--;
+            document.getElementById('timer-text').innerText = sisaWaktu;
+            
+            // Tambahkan efek visual berkedip jika waktu < 5 detik (Opsional)
+            if(sisaWaktu <= 5) {
+                document.getElementById('timer-text').parentElement.classList.add('text-red-600');
+            } else {
+                document.getElementById('timer-text').parentElement.classList.remove('text-red-600');
+            }
+
+            if (sisaWaktu <= 0) {
+                clearInterval(timerInterval);
+                evaluasiJawaban();
+            }
+        }
+
+        function evaluasiJawaban() {
+            // Sembunyikan timer saat evaluasi
+            document.getElementById('timer-text').parentElement.classList.add('hidden');
+            
+            const soal = daftarSoal[soalSaatIniIndex];
+            const paneA = document.getElementById('pane-A');
+            const paneB = document.getElementById('pane-B');
+
+            // Beri warna biru untuk sisi yang benar, merah untuk yang salah
+            if (soal.jawabanBenar === "A") {
+                paneA.classList.add('bg-correct');
+                paneB.classList.add('bg-incorrect');
+            } else {
+                paneA.classList.add('bg-incorrect');
+                paneB.classList.add('bg-correct');
+            }
+
+            // Tahan layar warna selama 5 detik agar siswa bisa melihat hasilnya
+            setTimeout(() => {
+                soalSaatIniIndex++;
+                if (soalSaatIniIndex < daftarSoal.length) {
+                    mulaiRonde(soalSaatIniIndex);
+                } else {
+                    akhiriPermainan();
+                }
+            }, 5000); // Tahan 5 detik sebelum lanjut
+        }
+
+        function akhiriPermainan() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+        }
+
+        function resetGame() {
+            soalSaatIniIndex = 0;
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            mulaiRonde(soalSaatIniIndex);
+        }
+
+        // --- FUNGSI ERROR HANDLING ---
+        function tampilkanError(pesan) {
+            document.getElementById('error-text').innerText = pesan;
+            document.getElementById('error-modal').classList.remove('hidden');
+        }
+
+        function closeError() {
+            document.getElementById('error-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
