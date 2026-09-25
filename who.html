@@ -229,6 +229,43 @@
   }
   .modal-close:hover { background:rgba(255,255,255,.12); }
 
+  /* Lifeline Modal Timer (20 Detik) */
+  .ll-timer-box {
+    display:flex; align-items:center; gap:14px;
+    background:rgba(255,255,255,.05); border:1px solid rgba(245,197,24,.25);
+    border-radius:18px; padding:10px 18px; margin-bottom:18px;
+    box-shadow:0 4px 16px rgba(0,0,0,.3);
+  }
+  .ll-timer-circle {
+    position:relative; width:54px; height:54px; flex-shrink:0;
+  }
+  .ll-timer-circle svg {
+    width:100%; height:100%; transform:rotate(-90deg);
+  }
+  .ll-timer-circle .track {
+    fill:none; stroke:rgba(255,255,255,.1); stroke-width:4.5;
+  }
+  .ll-timer-circle .progress {
+    fill:none; stroke:var(--gold); stroke-width:4.5; stroke-linecap:round;
+    transition: stroke-dashoffset 1s linear, stroke .3s;
+  }
+  .ll-timer-circle .progress.urgent {
+    stroke:var(--wrong);
+  }
+  .ll-timer-num {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:1.35rem; font-weight:700; color:var(--gold);
+    transition: color .3s;
+  }
+  .ll-timer-num.urgent {
+    color:var(--wrong);
+    animation: pulseNum .5s infinite alternate;
+  }
+  @keyframes pulseNum {
+    from { transform: scale(1); }
+    to { transform: scale(1.18); }
+  }
+
   /* Walk away & confirm */
   .walk-away-btn {
     margin-top:16px; padding:8px 28px; border-radius:20px; border:1px solid rgba(255,255,255,.1);
@@ -430,27 +467,47 @@ const PRIZE_LADDER = [
 ];
 const SAFE_LEVELS = [4, 9]; // index 4 (Rp 1 Juta) & 9 (Rp 32 Juta)
 const TIMER_SECONDS = 30;
+const LIFELINE_SECONDS = 20;
 const CIRC = 2 * Math.PI * 32;
+const CIRC_LL = 2 * Math.PI * 23;
 
-const allQuestions = [
-  // Level 1-5 (Mudah)
+const questionsEasy = [
   { q:"Ibukota negara Indonesia adalah?", options:["Jakarta","Bandung","Surabaya","Yogyakarta"], answer:0 },
   { q:"Warna bendera Indonesia dari atas ke bawah adalah?", options:["Putih-Merah","Merah-Putih","Merah-Merah","Putih-Putih"], answer:1 },
   { q:"Hari kemerdekaan Indonesia diperingati setiap tanggal?", options:["1 Juni","17 Agustus","28 Oktober","10 November"], answer:1 },
-  { q:"Mata uang resmi Indonesia adalah?", options:["Ringgit","Baht","Rupiah","Peso"], answer:2 },
-  { q:"Planet terdekat dengan matahari adalah?", options:["Venus","Mars","Merkurius","Bumi"], answer:2 },
-  // Level 6-10 (Sedang)
-  { q:"Siapa penemu telepon?", options:["Thomas Edison","Nikola Tesla","Alexander Graham Bell","Guglielmo Marconi"], answer:2 },
-  { q:"Negara dengan luas wilayah terbesar di dunia adalah?", options:["Kanada","Amerika Serikat","Tiongkok","Rusia"], answer:3 },
-  { q:"Candi Borobudur terletak di provinsi?", options:["DI Yogyakarta","Jawa Timur","Jawa Tengah","Jawa Barat"], answer:2 },
-  { q:"Perang Dunia II berakhir pada tahun?", options:["1943","1944","1945","1946"], answer:2 },
-  { q:"Organ tubuh manusia yang berfungsi menyaring darah adalah?", options:["Hati","Ginjal","Paru-paru","Jantung"], answer:1 },
-  // Level 11-15 (Sulit)
+  { q:"Mata uang resmi negara Indonesia adalah?", options:["Ringgit","Baht","Rupiah","Peso"], answer:2 },
+  { q:"Planet terdekat dengan matahari dalam tata surya adalah?", options:["Venus","Mars","Merkurius","Bumi"], answer:2 },
+  { q:"Hewan mamalia terbesar di bumi adalah?", options:["Gajah Afrika","Jerapah","Paus Biru","Hiu Paus"], answer:2 },
+  { q:"Jumlah pemain dalam satu tim sepak bola di lapangan adalah?", options:["9 orang","10 orang","11 orang","12 orang"], answer:2 },
+  { q:"Rumus kimia dari senyawa air adalah?", options:["CO2","H2O","O2","NaCl"], answer:1 },
+  { q:"Lagu kebangsaan resmi Republik Indonesia adalah?", options:["Bagimu Negeri","Indonesia Raya","Tanah Airku","Garuda Pancasila"], answer:1 },
+  { q:"Bagian tumbuhan yang berfungsi menyerap air dari dalam tanah adalah?", options:["Daun","Batang","Akar","Bunga"], answer:2 }
+];
+
+const questionsMedium = [
+  { q:"Siapa tokoh penemu pesawat telepon?", options:["Thomas Edison","Nikola Tesla","Alexander Graham Bell","Guglielmo Marconi"], answer:2 },
+  { q:"Negara dengan luas wilayah daratan terbesar di dunia adalah?", options:["Kanada","Amerika Serikat","Tiongkok","Rusia"], answer:3 },
+  { q:"Candi Borobudur yang terkenal terletak di provinsi?", options:["DI Yogyakarta","Jawa Timur","Jawa Tengah","Jawa Barat"], answer:2 },
+  { q:"Perang Dunia II secara resmi berakhir pada tahun?", options:["1943","1944","1945","1946"], answer:2 },
+  { q:"Organ tubuh manusia yang berfungsi utama menyaring darah adalah?", options:["Hati","Ginjal","Paru-paru","Jantung"], answer:1 },
+  { q:"Danau vulkanik terbesar di dunia yang terletak di Indonesia adalah?", options:["Danau Singkarak","Danau Toba","Danau Maninjau","Danau Poso"], answer:1 },
+  { q:"Siapakah tokoh yang menjahit bendera Sang Saka Merah Putih pertama kali?", options:["R.A. Kartini","Dewi Sartika","Cut Nyak Dien","Fatmawati"], answer:3 },
+  { q:"Logam yang berwujud cair pada suhu kamar adalah?", options:["Timbal","Tembaga","Raksa","Seng"], answer:2 },
+  { q:"Samudra terluas dan terdalam di dunia adalah?", options:["Samudra Atlantik","Samudra Hindia","Samudra Pasifik","Samudra Arktik"], answer:2 },
+  { q:"Lambang sila keempat dalam Pancasila adalah?", options:["Bintang","Rantai","Pohon Beringin","Kepala Banteng"], answer:3 }
+];
+
+const questionsHard = [
   { q:"Siapa presiden pertama Amerika Serikat?", options:["Thomas Jefferson","Abraham Lincoln","George Washington","John Adams"], answer:2 },
-  { q:"Selat Malaka menghubungkan dua laut/samudra, yaitu?", options:["Laut Jawa & Laut Sulawesi","Samudra Hindia & Laut Cina Selatan","Laut Merah & Laut Tengah","Samudra Pasifik & Samudra Hindia"], answer:1 },
-  { q:"Perjanjian Westphalia (1648) mengakhiri perang apa?", options:["Perang Salib","Perang Napoleon","Perang 30 Tahun","Perang 100 Tahun"], answer:2 },
-  { q:"Unsur kimia dengan simbol 'Au' adalah?", options:["Perak","Aluminium","Emas","Tembaga"], answer:2 },
-  { q:"Konferensi Asia-Afrika tahun 1955 diadakan di kota?", options:["Jakarta","Bandung","Surabaya","Semarang"], answer:1 },
+  { q:"Selat Malaka secara geografis menghubungkan dua perairan besar, yaitu?", options:["Laut Jawa & Laut Sulawesi","Samudra Hindia & Laut Cina Selatan","Laut Merah & Laut Tengah","Samudra Pasifik & Samudra Hindia"], answer:1 },
+  { q:"Perjanjian Westphalia pada tahun 1648 mengakhiri konflik besar, yaitu?", options:["Perang Salib","Perang Napoleon","Perang Tiga Puluh Tahun","Perang Seratus Tahun"], answer:2 },
+  { q:"Unsur kimia dengan lambang simbol 'Au' pada tabel periodik adalah?", options:["Perak","Aluminium","Emas","Tembaga"], answer:2 },
+  { q:"Konferensi Asia-Afrika (KAA) tahun 1955 diadakan di kota?", options:["Jakarta","Bandung","Surabaya","Semarang"], answer:1 },
+  { q:"Filsuf Yunani Kuno yang merupakan guru dari Alexander Agung adalah?", options:["Plato","Sokrates","Aristoteles","Phytagoras"], answer:2 },
+  { q:"Gedung tempat dibacakannya ikrar Sumpah Pemuda 1928 beralamat di jalan?", options:["Pegangsaan Timur 56","Kramat Raya 106","Imam Bonjol 1","Merdeka Barat 12"], answer:1 },
+  { q:"Berapakah perkiraan kecepatan cahaya di ruang hampa udara?", options:["150.000 km/detik","300.000 km/detik","450.000 km/detik","600.000 km/detik"], answer:1 },
+  { q:"Lukisan mahakarya 'The Starry Night' dilukis oleh pelukis legendaris bernama?", options:["Claude Monet","Pablo Picasso","Leonardo da Vinci","Vincent van Gogh"], answer:3 },
+  { q:"Kerajaan Hindu tertua di Indonesia yang dibuktikan dengan prasasti Yupa adalah?", options:["Kerajaan Tarumanegara","Kerajaan Kutai","Kerajaan Sriwijaya","Kerajaan Majapahit"], answer:1 }
 ];
 
 /* ═══════════════════════════════════════════
@@ -458,25 +515,56 @@ const allQuestions = [
    ═══════════════════════════════════════════ */
 const STORAGE_KEY_ACTIVE = 'who_active_game_session';
 const STORAGE_KEY_RESULT = 'who_last_game_result';
+const STORAGE_KEY_TIME   = 'who_time_left';
+
+function saveTimeLeft(time){
+  try {
+    localStorage.setItem(STORAGE_KEY_TIME, time);
+  } catch(e){}
+}
+
+function getSavedTimeLeft(){
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_TIME);
+    if(val !== null){
+      const parsed = parseInt(val, 10);
+      if(!isNaN(parsed) && parsed > 0 && parsed <= TIMER_SECONDS){
+        return parsed;
+      }
+    }
+  } catch(e){}
+  return null;
+}
+
+function clearSavedTimeLeft(){
+  try {
+    localStorage.removeItem(STORAGE_KEY_TIME);
+  } catch(e){}
+}
 
 let questions = [];
 let currentQ = 0;
 let timeLeft = TIMER_SECONDS;
 let timerInterval = null;
+let isQuestionTimerPaused = false;
+let lifelineTimeLeft = LIFELINE_SECONDS;
+let lifelineTimerInterval = null;
 let answered = false;
 let lifelines = { fifty:false, phone:false, audience:false };
 let treeCollapsed = false;
 let isTimerActive = true;
 let eliminatedIndices = [];
 
-function saveActiveGame(){
+function saveActiveGame(overrideQ = null, isGameOver = false, gameOverReason = ''){
   try {
     const session = {
       questions: questions,
-      currentQ: currentQ,
+      currentQ: (overrideQ !== null) ? overrideQ : currentQ,
       lifelines: lifelines,
-      eliminatedIndices: eliminatedIndices,
-      isTimerActive: isTimerActive
+      eliminatedIndices: (overrideQ !== null) ? [] : eliminatedIndices,
+      isTimerActive: isTimerActive,
+      gameOver: isGameOver,
+      gameOverReason: gameOverReason
     };
     localStorage.setItem(STORAGE_KEY_ACTIVE, JSON.stringify(session));
   } catch(e){}
@@ -654,10 +742,25 @@ function setTimerMode(active){
 function show(id){ document.getElementById(id).classList.remove('hidden'); }
 function hide(id){ document.getElementById(id).classList.add('hidden'); }
 
+function getRandomSubset(arr, count){
+  const copy = [...arr];
+  for(let i = copy.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, count);
+}
+
 function startGame(){
   getAudio();
-  // Acak posisi pilihan jawaban A, B, C, D untuk setiap soal
-  questions = allQuestions.map(prepareShuffledQuestion);
+  // Pilih secara acak 5 soal mudah (Level 1-5), 5 soal sedang (Level 6-10), dan 5 soal sulit (Level 11-15)
+  const selectedEasy = getRandomSubset(questionsEasy, 5);
+  const selectedMedium = getRandomSubset(questionsMedium, 5);
+  const selectedHard = getRandomSubset(questionsHard, 5);
+  const selectedAll = [...selectedEasy, ...selectedMedium, ...selectedHard];
+
+  // Acak posisi pilihan jawaban A, B, C, D untuk setiap soal terpilih
+  questions = selectedAll.map(prepareShuffledQuestion);
   currentQ = 0;
   lifelines = { fifty:false, phone:false, audience:false };
   eliminatedIndices = [];
@@ -711,7 +814,7 @@ function toggleTree(){
 }
 
 /* ─── Load Question ─── */
-function loadQuestion(){
+function loadQuestion(resumeSavedTime = false){
   answered = false;
   eliminatedIndices = [];
   const q = questions[currentQ];
@@ -735,12 +838,25 @@ function loadQuestion(){
   });
 
   saveActiveGame();
-  startTimer();
+
+  if(resumeSavedTime){
+    const savedT = getSavedTimeLeft();
+    if(savedT !== null){
+      timeLeft = savedT;
+      startTimer(true);
+    } else {
+      startTimer();
+    }
+  } else {
+    startTimer();
+  }
 }
 
-/* ─── Timer ─── */
-function startTimer(){
+/* ─── Timer Soal (Main Question Timer) ─── */
+function startTimer(keepTime = false){
   clearInterval(timerInterval);
+  timerInterval = null;
+  isQuestionTimerPaused = false;
   const ring = document.getElementById('timer-ring');
   const timerText = document.getElementById('timer-text');
 
@@ -749,17 +865,43 @@ function startTimer(){
     timerText.style.color = 'var(--gold)';
     ring.style.strokeDashoffset = 0;
     ring.classList.remove('urgent');
+    clearSavedTimeLeft();
     return;
   }
 
-  timeLeft = TIMER_SECONDS;
+  if(!keepTime){
+    timeLeft = TIMER_SECONDS;
+    saveTimeLeft(timeLeft);
+  }
+  resumeQuestionTimer();
+}
+
+function pauseQuestionTimer(){
+  if(timerInterval){
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isQuestionTimerPaused = true;
+    saveTimeLeft(timeLeft);
+  }
+}
+
+function resumeQuestionTimer(){
+  if(!isTimerActive || answered) return;
+  clearInterval(timerInterval);
+  isQuestionTimerPaused = false;
   updateTimerDisplay();
   timerInterval = setInterval(()=>{
     timeLeft--;
     updateTimerDisplay();
+    // Simpan timeLeft ke localStorage dengan interval 3 detik
+    if(timeLeft % 3 === 0){
+      saveTimeLeft(timeLeft);
+    }
     if(timeLeft<=5 && timeLeft>0) sfxTick(timeLeft<=2);
     if(timeLeft<=0){
       clearInterval(timerInterval);
+      timerInterval = null;
+      clearSavedTimeLeft();
       timeUp();
     }
   },1000);
@@ -776,9 +918,53 @@ function updateTimerDisplay(){
   document.getElementById('timer-text').style.color = t<=5 ? 'var(--wrong)' : '';
 }
 
+/* ─── Timer Bantuan (20 Detik: Telepon Teman & Polling Audiens) ─── */
+function startLifelineTimer(){
+  stopLifelineTimer();
+  lifelineTimeLeft = LIFELINE_SECONDS;
+  updateLifelineTimerDisplay();
+  lifelineTimerInterval = setInterval(()=>{
+    lifelineTimeLeft--;
+    updateLifelineTimerDisplay();
+    if(lifelineTimeLeft<=5 && lifelineTimeLeft>0){
+      sfxTick(lifelineTimeLeft<=2);
+    }
+    if(lifelineTimeLeft<=0){
+      stopLifelineTimer();
+      hideModal();
+    }
+  }, 1000);
+}
+
+function stopLifelineTimer(){
+  if(lifelineTimerInterval){
+    clearInterval(lifelineTimerInterval);
+    lifelineTimerInterval = null;
+  }
+}
+
+function updateLifelineTimerDisplay(){
+  const ring = document.getElementById('ll-timer-ring');
+  const text = document.getElementById('ll-timer-text');
+  if(!text) return;
+  const t = Math.max(lifelineTimeLeft, 0);
+  text.textContent = t;
+  if(ring){
+    ring.style.strokeDasharray = CIRC_LL;
+    ring.style.strokeDashoffset = CIRC_LL * (1 - t / LIFELINE_SECONDS);
+    ring.classList.toggle('urgent', t <= 5);
+  }
+  text.classList.toggle('urgent', t <= 5);
+}
+
 function timeUp(){
   if(answered) return;
   answered = true;
+  clearInterval(timerInterval);
+  timerInterval = null;
+  clearSavedTimeLeft();
+  // Tandai game over di localStorage agar refresh di detik 0 tidak mengulang soal
+  saveActiveGame(currentQ, true, 'time_up');
   revealCorrect();
   setTimeout(()=>endGame(false), 3000);
 }
@@ -788,16 +974,33 @@ function selectAnswer(idx){
   if(answered) return;
   answered = true;
   clearInterval(timerInterval);
+  clearSavedTimeLeft();
   sfxSelect();
+
+  const q = questions[currentQ];
+  const isCorrect = (idx === q.answer);
+
+  // KUNCI KEPUTUSAN JAWABAN KE LOCALSTORAGE SEKETIKA:
+  // Mencegah eksploitasi refresh saat waktu tunggu (suspense 2 detik)
+  if(isCorrect){
+    if(currentQ === PRIZE_LADDER.length - 1){
+      saveActiveGame(currentQ, true, 'grand_prize');
+    } else {
+      // Jawaban benar: langsung kunci ke soal berikutnya
+      saveActiveGame(currentQ + 1);
+    }
+  } else {
+    // Jawaban salah: langsung kunci status game over
+    saveActiveGame(currentQ, true, 'wrong_answer');
+  }
 
   const btns = document.querySelectorAll('.option-btn');
   btns.forEach(b=>b.classList.add('disabled'));
   btns[idx].classList.add('selected');
 
-  // Dramatic pause sebelum jawaban diungkap
+  // Dramatic pause sebelum jawaban diungkap di layar
   setTimeout(()=>{
-    const q = questions[currentQ];
-    if(idx === q.answer){
+    if(isCorrect){
       btns[idx].classList.remove('selected');
       btns[idx].classList.add('correct');
       sfxCorrect();
@@ -831,6 +1034,7 @@ function revealCorrect(){
 /* ─── End Game ─── */
 function endGame(won, grandPrize=false){
   clearInterval(timerInterval);
+  clearSavedTimeLeft();
   try { localStorage.removeItem(STORAGE_KEY_ACTIVE); } catch(e){}
   hide('game-screen');
 
@@ -885,6 +1089,7 @@ function endGame(won, grandPrize=false){
 /* ─── KONFIRMASI BERHENTI & AMBIL HADIAH ─── */
 function confirmWalkAway(){
   if(answered) return;
+  pauseQuestionTimer();
   const prize = currentQ > 0 ? PRIZE_LADDER[currentQ - 1] : 'Rp 0';
   const box = document.getElementById('modal-box');
   box.className = 'modal-box pop-anim';
@@ -910,7 +1115,7 @@ function confirmWalkAway(){
 }
 
 function executeWalkAway(){
-  hideModal();
+  hide('modal');
   walkAway();
 }
 
@@ -947,6 +1152,7 @@ function usePhoneAFriend(){
   document.getElementById('ll-phone').classList.add('used');
   sfxSelect();
   saveActiveGame();
+  pauseQuestionTimer();
 
   const q = questions[currentQ];
   const letters = ['A','B','C','D'];
@@ -965,12 +1171,31 @@ function usePhoneAFriend(){
   const box = document.getElementById('modal-box');
   box.className = 'modal-box pop-anim';
   box.innerHTML = `
-    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:12px;">📞 Telepon Teman</h3>
+    <!-- Card Timer Bantuan 20 Detik -->
+    <div class="ll-timer-box">
+      <div class="ll-timer-circle">
+        <svg viewBox="0 0 54 54">
+          <circle class="track" cx="27" cy="27" r="23"/>
+          <circle class="progress" id="ll-timer-ring" cx="27" cy="27" r="23"/>
+        </svg>
+        <span class="ll-timer-num" id="ll-timer-text">20</span>
+      </div>
+      <div style="text-align:left; flex:1;">
+        <div style="font-family:'Oswald',sans-serif; font-size:.82rem; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.05em;">⏱️ Waktu Panggilan Teman</div>
+        <div style="font-size:.88rem; color:var(--gold); font-weight:600;">Waktu Soal Dijeda ⏸️</div>
+      </div>
+    </div>
+
+    <div style="font-size:2.2rem; margin-bottom:4px;">📞</div>
+    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:8px;">Telepon Teman</h3>
     <p style="font-style:italic;color:rgba(255,255,255,.4);margin-bottom:12px;">"Halo, aku butuh bantuanmu..."</p>
-    <p style="font-size:1.1rem; line-height:1.6; margin-bottom:20px;">${phrases[Math.floor(Math.random()*phrases.length)]}</p>
-    <button class="modal-close" onclick="hideModal()">Terima Kasih! [Spasi/Enter]</button>
+    <div style="font-size:1.1rem; line-height:1.6; margin-bottom:20px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); padding:14px 18px; border-radius:16px;">
+      ${phrases[Math.floor(Math.random()*phrases.length)]}
+    </div>
+    <button class="modal-close" onclick="hideModal()">Selesai &amp; Lanjut Soal [Spasi/Enter]</button>
   `;
   show('modal');
+  startLifelineTimer();
 }
 
 function useAskAudience(){
@@ -979,6 +1204,7 @@ function useAskAudience(){
   document.getElementById('ll-audience').classList.add('used');
   sfxSelect();
   saveActiveGame();
+  pauseQuestionTimer();
 
   const q = questions[currentQ];
   const letters = ['A','B','C','D'];
@@ -1018,12 +1244,29 @@ function useAskAudience(){
   const box = document.getElementById('modal-box');
   box.className = 'modal-box pop-anim';
   box.innerHTML = `
-    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:12px;">👥 Polling Penonton</h3>
-    ${eliminatedIndices.length > 0 ? '<p style="color:var(--safe); font-size:.9rem; margin-bottom:8px;">*Penonton hanya memilih di antara opsi yang tersisa (50:50)</p>' : ''}
+    <!-- Card Timer Bantuan 20 Detik -->
+    <div class="ll-timer-box">
+      <div class="ll-timer-circle">
+        <svg viewBox="0 0 54 54">
+          <circle class="track" cx="27" cy="27" r="23"/>
+          <circle class="progress" id="ll-timer-ring" cx="27" cy="27" r="23"/>
+        </svg>
+        <span class="ll-timer-num" id="ll-timer-text">20</span>
+      </div>
+      <div style="text-align:left; flex:1;">
+        <div style="font-family:'Oswald',sans-serif; font-size:.82rem; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.05em;">⏱️ Waktu Polling Penonton</div>
+        <div style="font-size:.88rem; color:var(--gold); font-weight:600;">Waktu Soal Dijeda ⏸️</div>
+      </div>
+    </div>
+
+    <div style="font-size:2.2rem; margin-bottom:4px;">👥</div>
+    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:8px;">Polling Penonton</h3>
+    ${eliminatedIndices.length > 0 ? '<p style="color:var(--safe); font-size:.88rem; margin-bottom:8px;">*Penonton hanya memilih di antara opsi yang tersisa (50:50)</p>' : ''}
     <div class="audience-bars">${barsHTML}</div>
-    <button class="modal-close" onclick="hideModal()">Terima Kasih! [Spasi/Enter]</button>
+    <button class="modal-close" onclick="hideModal()">Selesai &amp; Lanjut Soal [Spasi/Enter]</button>
   `;
   show('modal');
+  startLifelineTimer();
 
   setTimeout(()=>{
     document.querySelectorAll('.bar-fill').forEach(bar=>{
@@ -1077,10 +1320,18 @@ function toggleFullscreen(){
   }
 }
 
-function hideModal(){ hide('modal'); }
+function hideModal(){
+  const hadLifeline = (lifelineTimerInterval !== null);
+  stopLifelineTimer();
+  hide('modal');
+  if(!answered && isTimerActive && (isQuestionTimerPaused || hadLifeline)){
+    resumeQuestionTimer();
+  }
+}
 
 /* ─── RESET GAME & STORAGE ─── */
 function confirmResetGame(){
+  pauseQuestionTimer();
   const box = document.getElementById('modal-box');
   box.className = 'modal-box pop-anim';
   box.innerHTML = `
@@ -1103,11 +1354,15 @@ function confirmResetGame(){
 
 function executeResetGame(){
   clearInterval(timerInterval);
+  timerInterval = null;
+  isQuestionTimerPaused = false;
+  stopLifelineTimer();
+  clearSavedTimeLeft();
   try {
     localStorage.removeItem(STORAGE_KEY_ACTIVE);
     localStorage.removeItem(STORAGE_KEY_RESULT);
   } catch(e){}
-  hideModal();
+  hide('modal');
   currentQ = 0;
   answered = false;
   eliminatedIndices = [];
@@ -1138,6 +1393,18 @@ function checkResumeGame(){
 
       setTimerMode(isTimerActive);
 
+      // Jika sesi sebelumnya ditandai game over (misal refresh di detik 0 waktu habis atau salah jawab)
+      if (session.gameOver) {
+        hide('start-screen');
+        hide('game-screen');
+        if (session.gameOverReason === 'grand_prize') {
+          endGame(true, true);
+        } else {
+          endGame(false);
+        }
+        return;
+      }
+
       // Tandai tombol lifeline yang sudah terpakai
       if (lifelines.fifty) {
         const el = document.getElementById('ll-5050');
@@ -1155,7 +1422,7 @@ function checkResumeGame(){
       hide('start-screen');
       show('game-screen');
       buildMoneyTree();
-      loadQuestion();
+      loadQuestion(true);
 
       // Jika pada soal ini 50:50 sudah digunakan, eliminasi kembali 2 opsi
       if (eliminatedIndices.length > 0) {
