@@ -189,7 +189,7 @@
   }
   .ll-btn svg { width:26px; height:26px; }
 
-  #btn-fullscreen:hover { background:rgba(255,255,255,.15); border-color:var(--gold); color:var(--gold); }
+  #btn-fullscreen:hover, #btn-fullscreen-start:hover, #btn-reset:hover, #btn-reset-start:hover { background:rgba(255,255,255,.15); border-color:var(--gold); color:var(--gold); }
 
   /* Audience modal */
   .modal-overlay {
@@ -270,6 +270,8 @@
     .option-btn { padding:14px 16px; }
     .lifelines { gap:8px; }
     .ll-btn { width:46px; height:46px; }
+    #last-result-badge { max-width: 50%; padding: 6px 12px !important; }
+    #last-result-text { font-size: .95rem !important; }
   }
 </style>
 </head>
@@ -281,6 +283,26 @@
 
 <!-- ═══ START SCREEN ═══ -->
 <div id="start-screen" class="screen">
+  <!-- Top Controls (Fullscreen & Reset) -->
+  <div style="position:absolute; top:16px; left:20px; z-index:25; display:flex; gap:10px;">
+    <button onclick="toggleFullscreen()" id="btn-fullscreen-start" title="Layar Penuh (F)" style="width:48px; height:48px; border-radius:14px; border:1px solid rgba(255,255,255,.15); background:rgba(10,14,39,.75); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; transition:all .2s; box-shadow:0 4px 12px rgba(0,0,0,.3);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+        <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>
+      </svg>
+    </button>
+    <button onclick="confirmResetGame()" id="btn-reset-start" title="Reset Data Kuis" style="width:48px; height:48px; border-radius:14px; border:1px solid rgba(255,255,255,.15); background:rgba(10,14,39,.75); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; transition:all .2s; box-shadow:0 4px 12px rgba(0,0,0,.3);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Badge Hasil Terakhir di Pojok Kanan Atas -->
+  <div id="last-result-badge" style="display:none; position:absolute; top:16px; right:20px; z-index:25; background:rgba(10,14,39,.8); border:1px solid rgba(245,197,24,.35); padding:8px 18px; border-radius:14px; backdrop-filter:blur(8px); box-shadow:0 4px 14px rgba(0,0,0,.35); text-align:right;">
+    <div style="color:rgba(255,255,255,.6); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; font-family:'Oswald',sans-serif;">🏆 Hasil Terakhir</div>
+    <div id="last-result-text" style="color:var(--gold); font-weight:700; font-family:'Oswald',sans-serif; font-size:1.1rem; letter-spacing:.02em;"></div>
+  </div>
+
   <div class="logo-diamond">
     <svg viewBox="0 0 160 160" fill="none">
       <path d="M80 10 L140 60 L80 150 L20 60 Z" fill="url(#diamondGrad)" stroke="var(--gold)" stroke-width="2"/>
@@ -307,7 +329,7 @@
       ⏱️ 30 Detik
     </button>
     <button type="button" id="btn-timer-off" onclick="setTimerMode(false)" style="padding:8px 18px; border-radius:14px; font-family:'Oswald',sans-serif; font-size:1rem; font-weight:700; border:1px solid rgba(255,255,255,.2); background:transparent; color:rgba(255,255,255,.5); cursor:pointer; transition:all .2s;">
-      ☕ Santai (Tanpa Batas)
+      Tanpa Batas
     </button>
   </div>
 
@@ -317,11 +339,16 @@
 <!-- ═══ GAME SCREEN ═══ -->
 <div id="game-screen" class="screen hidden">
 
-  <!-- Top Controls (Fullscreen) -->
-  <div style="position:absolute; top:16px; left:20px; z-index:25;">
+  <!-- Top Controls (Fullscreen & Reset) -->
+  <div style="position:absolute; top:16px; left:20px; z-index:25; display:flex; gap:10px;">
     <button onclick="toggleFullscreen()" id="btn-fullscreen" title="Layar Penuh (F)" style="width:48px; height:48px; border-radius:14px; border:1px solid rgba(255,255,255,.15); background:rgba(10,14,39,.75); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; transition:all .2s; box-shadow:0 4px 12px rgba(0,0,0,.3);">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
         <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>
+      </svg>
+    </button>
+    <button onclick="confirmResetGame()" id="btn-reset" title="Mulai Ulang / Reset Data" style="width:48px; height:48px; border-radius:14px; border:1px solid rgba(255,255,255,.15); background:rgba(10,14,39,.75); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; transition:all .2s; box-shadow:0 4px 12px rgba(0,0,0,.3);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
       </svg>
     </button>
   </div>
@@ -427,8 +454,11 @@ const allQuestions = [
 ];
 
 /* ═══════════════════════════════════════════
-   STATE
+   LOCALSTORAGE & STATE
    ═══════════════════════════════════════════ */
+const STORAGE_KEY_ACTIVE = 'who_active_game_session';
+const STORAGE_KEY_RESULT = 'who_last_game_result';
+
 let questions = [];
 let currentQ = 0;
 let timeLeft = TIMER_SECONDS;
@@ -438,7 +468,47 @@ let lifelines = { fifty:false, phone:false, audience:false };
 let treeCollapsed = false;
 let isTimerActive = true;
 let eliminatedIndices = [];
-let heartbeatInterval = null;
+
+function saveActiveGame(){
+  try {
+    const session = {
+      questions: questions,
+      currentQ: currentQ,
+      lifelines: lifelines,
+      eliminatedIndices: eliminatedIndices,
+      isTimerActive: isTimerActive
+    };
+    localStorage.setItem(STORAGE_KEY_ACTIVE, JSON.stringify(session));
+  } catch(e){}
+}
+
+function saveLastResult(prize, status){
+  try {
+    const res = {
+      prize: prize,
+      status: status,
+      timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    };
+    localStorage.setItem(STORAGE_KEY_RESULT, JSON.stringify(res));
+    displayLastResult();
+  } catch(e){}
+}
+
+function displayLastResult(){
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_RESULT);
+    const badge = document.getElementById('last-result-badge');
+    const text = document.getElementById('last-result-text');
+    if (!badge || !text) return;
+    if (saved) {
+      const res = JSON.parse(saved);
+      text.textContent = `${res.prize} • ${res.status}`;
+      badge.style.display = 'block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e){}
+}
 
 /* ═══════════════════════════════════════════
    AUDIO (Singleton)
@@ -467,58 +537,6 @@ function sfxWrong(){ playTone(330,.15,'triangle'); setTimeout(()=>playTone(220,.
 function sfxTick(urgent){ playTone(urgent?880:587, .06, urgent?'triangle':'sine', .08); }
 function sfxSelect(){ playTone(440,.06,'sine',.08); }
 function sfxWin(){ playTone(523,.1); setTimeout(()=>playTone(659,.1),120); setTimeout(()=>playTone(784,.1),240); setTimeout(()=>playTone(1047,.4),360); }
-
-/* ─── EFEK DETAK JANTUNG (HEARTBEAT) ─── */
-function playHeartbeatThump(vol = 0.22){
-  try {
-    const ctx = getAudio();
-    if(!ctx) return;
-    const now = ctx.currentTime;
-    
-    // Thump 1 ("lub")
-    const o1 = ctx.createOscillator();
-    const g1 = ctx.createGain();
-    o1.type = 'sine';
-    o1.frequency.setValueAtTime(75, now);
-    o1.frequency.exponentialRampToValueAtTime(35, now + 0.1);
-    g1.gain.setValueAtTime(vol, now);
-    g1.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-    o1.connect(g1);
-    g1.connect(ctx.destination);
-    o1.start(now);
-    o1.stop(now + 0.1);
-
-    // Thump 2 ("dub") ~130ms setelahnya
-    const o2 = ctx.createOscillator();
-    const g2 = ctx.createGain();
-    o2.type = 'sine';
-    o2.frequency.setValueAtTime(62, now + 0.13);
-    o2.frequency.exponentialRampToValueAtTime(30, now + 0.22);
-    g2.gain.setValueAtTime(vol * 0.7, now + 0.13);
-    g2.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-    o2.connect(g2);
-    g2.connect(ctx.destination);
-    o2.start(now + 0.13);
-    o2.stop(now + 0.22);
-  } catch(e){}
-}
-
-function startHeartbeat(){
-  stopHeartbeat();
-  playHeartbeatThump();
-  heartbeatInterval = setInterval(()=>{
-    if(!answered){
-      playHeartbeatThump();
-    }
-  }, 1400);
-}
-
-function stopHeartbeat(){
-  if(heartbeatInterval){
-    clearInterval(heartbeatInterval);
-    heartbeatInterval = null;
-  }
-}
 
 /* ═══════════════════════════════════════════
    CONFETTI ENGINE (Canvas)
@@ -642,7 +660,12 @@ function startGame(){
   questions = allQuestions.map(prepareShuffledQuestion);
   currentQ = 0;
   lifelines = { fifty:false, phone:false, audience:false };
-  ['ll-5050','ll-phone','ll-audience'].forEach(id=>document.getElementById(id).classList.remove('used'));
+  eliminatedIndices = [];
+  ['ll-5050','ll-phone','ll-audience'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('used');
+  });
+  saveActiveGame();
   hide('start-screen');
   show('game-screen');
   buildMoneyTree();
@@ -650,8 +673,8 @@ function startGame(){
 }
 
 function restartGame(){
-  stopHeartbeat();
   hide('end-screen');
+  displayLastResult();
   show('start-screen');
 }
 
@@ -711,8 +734,8 @@ function loadQuestion(){
     grid.appendChild(btn);
   });
 
+  saveActiveGame();
   startTimer();
-  startHeartbeat();
 }
 
 /* ─── Timer ─── */
@@ -737,7 +760,6 @@ function startTimer(){
     if(timeLeft<=5 && timeLeft>0) sfxTick(timeLeft<=2);
     if(timeLeft<=0){
       clearInterval(timerInterval);
-      stopHeartbeat();
       timeUp();
     }
   },1000);
@@ -757,7 +779,6 @@ function updateTimerDisplay(){
 function timeUp(){
   if(answered) return;
   answered = true;
-  stopHeartbeat();
   revealCorrect();
   setTimeout(()=>endGame(false), 3000);
 }
@@ -767,7 +788,6 @@ function selectAnswer(idx){
   if(answered) return;
   answered = true;
   clearInterval(timerInterval);
-  stopHeartbeat();
   sfxSelect();
 
   const btns = document.querySelectorAll('.option-btn');
@@ -811,7 +831,7 @@ function revealCorrect(){
 /* ─── End Game ─── */
 function endGame(won, grandPrize=false){
   clearInterval(timerInterval);
-  stopHeartbeat();
+  try { localStorage.removeItem(STORAGE_KEY_ACTIVE); } catch(e){}
   hide('game-screen');
 
   let prize = 'Rp 0';
@@ -819,6 +839,7 @@ function endGame(won, grandPrize=false){
   let sub = 'Jangan menyerah, coba lagi!';
   let iconColor = 'var(--wrong)';
   let iconPath = 'M6 6l12 12M18 6L6 18';
+  let statusText = 'Gugur (Rp 0)';
 
   if(grandPrize){
     prize = PRIZE_LADDER[PRIZE_LADDER.length-1];
@@ -826,6 +847,7 @@ function endGame(won, grandPrize=false){
     sub = 'Selamat! Anda berhasil menjadi Miliarder Rp 1.000.000.000!';
     iconColor = 'var(--gold)';
     iconPath = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
+    statusText = 'Miliarder (Tamat)';
     launchConfetti(4500);
   } else if(won){
     prize = PRIZE_LADDER[currentQ > 0 ? currentQ - 1 : 0];
@@ -833,6 +855,7 @@ function endGame(won, grandPrize=false){
     sub = 'Keputusan bijak! Anda memilih untuk berhenti dan mengamankan hadiah.';
     iconColor = 'var(--gold)';
     iconPath = 'M5 13l4 4L19 7';
+    statusText = 'Berhenti & Ambil Hadiah';
     launchConfetti(2500);
   } else {
     let safePrize = 'Rp 0';
@@ -842,8 +865,13 @@ function endGame(won, grandPrize=false){
     prize = safePrize;
     if(safePrize !== 'Rp 0'){
       sub = `Anda pulang membawa hadiah titik aman: ${safePrize}`;
+      statusText = 'Titik Aman';
+    } else {
+      statusText = 'Gugur (Rp 0)';
     }
   }
+
+  saveLastResult(prize, statusText);
 
   document.getElementById('end-title').textContent = title;
   document.getElementById('end-prize').textContent = prize;
@@ -888,7 +916,6 @@ function executeWalkAway(){
 
 function walkAway(){
   clearInterval(timerInterval);
-  stopHeartbeat();
   answered = true;
   endGame(true);
 }
@@ -911,6 +938,7 @@ function useFiftyFifty(){
 
   const btns = document.querySelectorAll('.option-btn');
   remove.forEach(i => btns[i].classList.add('eliminated'));
+  saveActiveGame();
 }
 
 function usePhoneAFriend(){
@@ -918,6 +946,7 @@ function usePhoneAFriend(){
   lifelines.phone = true;
   document.getElementById('ll-phone').classList.add('used');
   sfxSelect();
+  saveActiveGame();
 
   const q = questions[currentQ];
   const letters = ['A','B','C','D'];
@@ -949,6 +978,7 @@ function useAskAudience(){
   lifelines.audience = true;
   document.getElementById('ll-audience').classList.add('used');
   sfxSelect();
+  saveActiveGame();
 
   const q = questions[currentQ];
   const letters = ['A','B','C','D'];
@@ -1049,6 +1079,95 @@ function toggleFullscreen(){
 
 function hideModal(){ hide('modal'); }
 
+/* ─── RESET GAME & STORAGE ─── */
+function confirmResetGame(){
+  const box = document.getElementById('modal-box');
+  box.className = 'modal-box pop-anim';
+  box.innerHTML = `
+    <div style="font-size:2.8rem; margin-bottom:8px;">🔄</div>
+    <h3 style="font-family:'Oswald',sans-serif; font-size:1.8rem; color:var(--wrong); margin-bottom:10px; text-transform:uppercase;">RESET DATA KUIS?</h3>
+    <p style="color:rgba(255,255,255,.8); font-size:1rem; margin-bottom:14px; line-height:1.5;">
+      Semua progres kuis yang sedang berjalan dan catatan hasil permainan di perangkat ini akan dibersihkan.
+    </p>
+    <div style="display:flex; gap:12px; justify-content:center; margin-top:20px;">
+      <button onclick="hideModal()" style="padding:12px 24px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:#fff; font-family:'Oswald',sans-serif; font-size:1rem; cursor:pointer; transition:all .2s;">
+        Batal
+      </button>
+      <button class="modal-close" onclick="executeResetGame()" style="padding:12px 28px; border-radius:12px; border:none; background:linear-gradient(135deg,#dc2626,#991b1b); color:#fff; font-family:'Oswald',sans-serif; font-weight:700; font-size:1rem; cursor:pointer; box-shadow:0 0 16px rgba(220,38,38,.4); transition:all .2s;">
+        Ya, Reset Semua
+      </button>
+    </div>
+  `;
+  show('modal');
+}
+
+function executeResetGame(){
+  clearInterval(timerInterval);
+  try {
+    localStorage.removeItem(STORAGE_KEY_ACTIVE);
+    localStorage.removeItem(STORAGE_KEY_RESULT);
+  } catch(e){}
+  hideModal();
+  currentQ = 0;
+  answered = false;
+  eliminatedIndices = [];
+  lifelines = { fifty:false, phone:false, audience:false };
+  ['ll-5050','ll-phone','ll-audience'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('used');
+  });
+  hide('game-screen');
+  hide('end-screen');
+  displayLastResult();
+  show('start-screen');
+}
+
+/* ─── AUTO-RESUME GAME ON REFRESH ─── */
+function checkResumeGame(){
+  displayLastResult();
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_ACTIVE);
+    if (!saved) return;
+    const session = JSON.parse(saved);
+    if (session && Array.isArray(session.questions) && session.questions.length > 0 && typeof session.currentQ === 'number') {
+      questions = session.questions;
+      currentQ = session.currentQ;
+      lifelines = session.lifelines || { fifty:false, phone:false, audience:false };
+      eliminatedIndices = session.eliminatedIndices || [];
+      isTimerActive = (session.isTimerActive !== undefined) ? session.isTimerActive : true;
+
+      setTimerMode(isTimerActive);
+
+      // Tandai tombol lifeline yang sudah terpakai
+      if (lifelines.fifty) {
+        const el = document.getElementById('ll-5050');
+        if (el) el.classList.add('used');
+      }
+      if (lifelines.phone) {
+        const el = document.getElementById('ll-phone');
+        if (el) el.classList.add('used');
+      }
+      if (lifelines.audience) {
+        const el = document.getElementById('ll-audience');
+        if (el) el.classList.add('used');
+      }
+
+      hide('start-screen');
+      show('game-screen');
+      buildMoneyTree();
+      loadQuestion();
+
+      // Jika pada soal ini 50:50 sudah digunakan, eliminasi kembali 2 opsi
+      if (eliminatedIndices.length > 0) {
+        const btns = document.querySelectorAll('.option-btn');
+        eliminatedIndices.forEach(i => {
+          if (btns[i]) btns[i].classList.add('eliminated');
+        });
+      }
+    }
+  } catch(e){}
+}
+
 /* ─── DUKUNGAN KEYBOARD (F untuk Fullscreen, Spasi / Enter untuk Modal) ─── */
 window.addEventListener('keydown', (e) => {
   // Tombol F untuk fullscreen
@@ -1069,6 +1188,9 @@ window.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// Jalankan auto-resume dan muat data hasil terakhir saat halaman dimuat
+checkResumeGame();
 
 </script>
 </body>
